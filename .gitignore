@@ -1,0 +1,8 @@
+*
+!*/
+!*.*
+*.o
+.*
+.DS_Store
+Thumbs.db
+out.asm
