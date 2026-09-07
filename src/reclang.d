@@ -38,6 +38,7 @@ Arguments processArguments(string[] args) {
 					case "o": arguments.outputFile = v; break;
 					case "a": arguments.arch = v; break;
 					case "i": arguments.include = v; break;
+					case "s": arguments.path = v; break;
 					default:
 						arguments.error = "Unknown parameter: -" ~ k;
 						return arguments;
@@ -59,6 +60,7 @@ void showHelp() {
     --version       reclang version
     --help          this help
     -o FILENAME     output file name
+    -s PATH         path for source files
     -i PATH         path for include files
     -a ARCH         target architechture
 	}.strip;
