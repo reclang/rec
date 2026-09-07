@@ -1,6 +1,9 @@
 import std.stdio;
 import std.string;
 
+import std.path : absolutePath, buildNormalizedPath, baseName;
+
+
 enum VERSION = import("VERSION").strip;
 
 struct Arguments {
@@ -46,7 +49,29 @@ Arguments processArguments(string[] args) {
 				break;
 		}
 	}
+	string currentPath = ".".normalizePath;
+	arguments.path = arguments.path.length == 0 ? currentPath : arguments.path.normalizePath;
+	arguments.include = arguments.include.length == 0 ? currentPath : arguments.include.normalizePath;
+	if (arguments.name.length == 0) {
+		if (arguments.outputFile.length != 0) {
+			arguments.name = arguments.outputFile.withoutExtension;
+		} else if (arguments.filenames.length > 0) {
+			arguments.name = arguments.filenames[0].withoutExtension;
+		} else {
+			arguments.name = "app";
+		}
+	}
 	return arguments;
+}
+
+string normalizePath(string path) {
+	return buildNormalizedPath(absolutePath(path));
+}
+
+string withoutExtension(string path) {
+    string name = baseName(path);
+    long dotIndex = name.lastIndexOf('.');
+    return dotIndex != -1 ? name[0 .. dotIndex] : name;
 }
 
 void showVersion(bool full = false) {
