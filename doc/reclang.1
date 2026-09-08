@@ -1,0 +1,41 @@
+.TH RECLANG 1 2026-09-15 reclang "User Commands"
+.SH NAME
+reclang \- Recreational Programming Language compiler
+.SH SYNOPSIS
+.B reclang
+.RI [ options ]
+.IR file ...
+.br
+.B reclang \-\-version
+.br
+.B reclang \-\-help
+.SH DESCRIPTION
+.B reclang
+is the compiler for the Recreational Programming Language.
+.SH OPTIONS
+.TP
+.BI \-o " FILENAME"
+Name of the output file.
+.TP
+.BI \-s " PATH"
+Path for source files.
+Defaults to the current directory.
+.TP
+.BI \-i " PATH"
+Path for include files.
+Defaults to the current directory.
+.TP
+.BI \-a " ARCH"
+Target architecture.
+.TP
+.B \-\-help
+Print a short usage summary and exit.
+.TP
+.B \-\-version
+Print the version number and exit.
+.SH EXIT STATUS
+.B reclang
+exits 0 on success and non-zero on failure.
+.SH SEE ALSO
+Project page:
+.I https://reclang.org
