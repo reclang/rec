@@ -1,6 +1,7 @@
 import std.stdio;
 import std.string;
 import args;
+import pp;
 
 enum VERSION = import("VERSION").strip;
 
@@ -33,5 +34,10 @@ int main(string[] args) {
 		return 0;
 	}
 	writeln(arguments);
+	foreach(filename; arguments.filenames) {
+		SourceLine[] lines = preprocess(filename);
+		writeln(lines);
+	}
+
 	return 0;
 }
