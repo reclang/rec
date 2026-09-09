@@ -4,8 +4,11 @@ import std.uni;
 import pp;
 
 enum TokenKind {
-	identifier, type, text
+	identifier, type, keyword, constant, punctuator, text
 }
+
+bool[string] types = [ "void": true ];
+bool[string] punctuators = [ "{": true, "(": true, "}": true, ")": true ];
 
 struct Token {
 	string path;
@@ -14,6 +17,13 @@ struct Token {
 	uint pos;
 	string text;
 	TokenKind kind;
+}
+
+TokenKind tokenKind(string s) {
+	if (s in types) return TokenKind.type;
+	if (isNumber(s[0])) return TokenKind.constant;
+	if (s in punctuators) return TokenKind.punctuator;
+	return TokenKind.identifier;
 }
 
 Token[] tokenize(string path, string filename, uint line, string s) {
@@ -25,13 +35,13 @@ Token[] tokenize(string path, string filename, uint line, string s) {
 		if (collecting) {
 			if (isWhite(c)) {
 				collecting = false;
-				tokens ~= Token(path, filename, line, start, s[start..i], TokenKind.text);
+				tokens ~= Token(path, filename, line, start, s[start..i], tokenKind(s[start..i]));
 				continue;
 			}
 			switch (c) {
 				case '{', '(', '}', ')':
-					tokens ~= Token(path, filename, line, start, s[start..i], TokenKind.text);
-					tokens ~= Token(path, filename, line, i, s[i..i+1], TokenKind.text);
+					tokens ~= Token(path, filename, line, start, s[start..i], tokenKind(s[start..i]));
+					tokens ~= Token(path, filename, line, i, s[i..i+1], TokenKind.punctuator);
 					start = i+1;
 					collecting = false;
 					break;
@@ -43,7 +53,7 @@ Token[] tokenize(string path, string filename, uint line, string s) {
 			start = i;
 		}
 	}
-	if (collecting) tokens ~= Token(path, filename, line, start, s[start..$], TokenKind.text);
+	if (collecting) tokens ~= Token(path, filename, line, start, s[start..$], tokenKind(s[start..$]));
 	return tokens;
 }
 

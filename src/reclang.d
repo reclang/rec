@@ -3,6 +3,7 @@ import std.string;
 import args;
 import pp;
 import tokenizer;
+import parser;
 
 enum VERSION = import("VERSION").strip;
 
@@ -35,11 +36,14 @@ int main(string[] args) {
 		return 0;
 	}
 	writeln(arguments);
+	Node program = new Node(NodeKind.program, "Program");
 	foreach(filename; arguments.filenames) {
 		SourceLine[] lines = preprocess(filename);
 		foreach (l; lines) writefln("%s/%s:%d: %s", l.path, l.filename, l.num, l.text);
 		Token[] tokens = tokenize(lines);
 		foreach(t; tokens) writefln("%s/%s %d:%d: %s", t.path, t.filename, t.line, t.pos + 1, t.text);
+		parse(program, tokens);
+		program.printNode;
 	}
 
 	return 0;
