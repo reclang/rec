@@ -8,7 +8,7 @@ enum TokenKind {
 }
 
 bool[string] types = [ "void": true ];
-bool[string] punctuators = [ "{": true, "(": true, "}": true, ")": true ];
+bool[string] punctuators = [ "{": true, "(": true, "}": true, ")": true,  ",": true  ];
 
 struct Token {
 	string path;
@@ -39,7 +39,7 @@ Token[] tokenize(string path, string filename, uint line, string s) {
 				continue;
 			}
 			switch (c) {
-				case '{', '(', '}', ')':
+				case '{', '(', '}', ')', ',':
 					tokens ~= Token(path, filename, line, start, s[start..i], tokenKind(s[start..i]));
 					tokens ~= Token(path, filename, line, i, s[i..i+1], TokenKind.punctuator);
 					start = i+1;
