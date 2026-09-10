@@ -4,6 +4,7 @@ import args;
 import pp;
 import tokenizer;
 import parser;
+import codegen;
 
 enum VERSION = import("VERSION").strip;
 
@@ -45,6 +46,8 @@ int main(string[] args) {
 		parse(program, tokens);
 		program.printNode;
 	}
+	string asmcode = genCode(program);
+	writeln(asmcode);
 
 	return 0;
 }
