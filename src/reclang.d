@@ -48,6 +48,10 @@ int main(string[] args) {
 	}
 	string asmcode = genCode(program);
 	writeln(asmcode);
+	
+	string outputPath = arguments.outputFile.length > 0 ? arguments.outputFile : "./out.asm";
+	File outputFile = File(outputPath, "w");
+	outputFile.write(asmcode);
 
 	return 0;
 }
