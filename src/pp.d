@@ -28,3 +28,12 @@ SourceLine[] preprocess(string filename) {
 	}
 	return lines;
 }
+
+SourceLine[] preprocess(string[] code) {
+	SourceLine[] lines;
+	uint num = 1;
+	foreach (line; code) {
+		lines ~= SourceLine("source.asm", "", num++, line);
+	}
+	return lines;
+}

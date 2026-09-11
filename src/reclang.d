@@ -5,6 +5,7 @@ import pp;
 import tokenizer;
 import parser;
 import codegen;
+import assembler;
 
 enum VERSION = import("VERSION").strip;
 
@@ -48,10 +49,14 @@ int main(string[] args) {
 	}
 	string asmcode = genCode(program);
 	writeln(asmcode);
-	
-	string outputPath = arguments.outputFile.length > 0 ? arguments.outputFile : "./out.asm";
-	File outputFile = File(outputPath, "w");
-	outputFile.write(asmcode);
+
+	//string outputPath = arguments.outputFile.length > 0 ? arguments.outputFile : "./out.asm";
+	//File outputFile = File(outputPath, "w");
+	//outputFile.write(asmcode);
+
+	SourceLine[] fullcode = preprocess(asmcode.splitLines);
+	foreach (l; fullcode) writefln("%s/%s:%d: %s", l.path, l.filename, l.num, l.text);
+	byte[] bytes = assemble(fullcode, arguments.outputFile);
 
 	return 0;
 }
