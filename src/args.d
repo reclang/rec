@@ -59,6 +59,7 @@ Arguments processArguments(string[] args) {
 	string currentPath = ".".normalizePath;
 	arguments.path = arguments.path.length == 0 ? currentPath : arguments.path.normalizePath;
 	arguments.include = arguments.include.length == 0 ? currentPath : arguments.include.normalizePath;
+	arguments.outputFile = arguments.outputFile.length == 0 ? "./out.o" : arguments.outputFile;
 	// filenames are relative to the source path; absolute ones are kept as is
 	foreach (ref filename; arguments.filenames) filename = buildNormalizedPath(arguments.path, filename);
 	if (arguments.name.length == 0) {
