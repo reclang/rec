@@ -1,0 +1,4 @@
+void main() {
+	writeln("Hello, world!")
+	exit(42)
+}
