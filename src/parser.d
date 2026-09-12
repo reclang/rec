@@ -10,7 +10,7 @@ enum NodeKind {
 class Node {
 	NodeKind kind;
 	string name;
-	string[] params;
+	Token[] params;
 	Node[] children;
 	Token[] tokens;
 
@@ -29,9 +29,9 @@ void printNode(Node node, uint depth = 0) {
 }
 
 uint parseParams(Node node, in Token[] tokens, uint pos) {
-	while (tokens[pos].text != ")") {
-		if (tokens[pos].text != ",") {
-			node.params ~= tokens[pos].text;
+	while (tokens[pos].kind != TokenKind.punctuator || tokens[pos].text != ")") {
+		if (tokens[pos].kind != TokenKind.punctuator || tokens[pos].text != ",") {
+			node.params ~= tokens[pos];
 		}
 		pos++;
 	}

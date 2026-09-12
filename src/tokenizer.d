@@ -49,6 +49,12 @@ Token[] tokenize(string path, string filename, uint line, string s) {
 			}
 		} else {
 			if (isWhite(c)) continue;
+			if (c == '"') {
+				start = i;
+				while (++i < s.length && s[i] != '"') { }
+				tokens ~= Token(path, filename, line, start, s[start+1..i], TokenKind.text);
+				continue;
+			}
 			collecting = true;
 			start = i;
 		}

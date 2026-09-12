@@ -5,15 +5,19 @@ import std.conv : to;
 import pp;
 import tokenizer;
 
+enum ulong baseAddress = 0x400000;
+
 struct Label {
 	string local;
 	string fullName;
 	uint offset;
+
+	ulong address() { return baseAddress + elf64.length + offset; }
 }
 
 struct Instruction {
 	string instruction;
-	string[] operands;
+	Token[] operands;
 
 	this(Token[] tokens) {
 		for(uint i = 0; i < tokens.length; i++) {
@@ -21,7 +25,7 @@ struct Instruction {
 			if (i == 0) {
 				this.instruction = tokens[0].text;
 			} else {
-				this.operands ~= tokens[i].text;
+				this.operands ~= tokens[i];
 			}
 		}
 	}
@@ -82,19 +86,31 @@ byte[] elf64 = [
 	0,0,0,0, 0,0,0,0,           // Alignment
 ];
 
-byte[] bytes(Instruction instruction) {
-	writeln(instruction);
+long value(Token operand, Label[string] labels) {
+	if (operand.kind == TokenKind.constant) return to!long(operand.text);
+	if (auto label = operand.text in labels) return label.address;
+	return 0;
+}
+
+byte[] bytes(Instruction instruction, Label[string] labels) {
 	switch (instruction.instruction) {
 		case "syscall": return [0x0f, 0x05];
 		// REX.W + B8+ rd io
 		case "mov":
-			int reg = registers[instruction.operands[0]];
-			long imm = to!long(instruction.operands[1]);
+			int reg = registers[instruction.operands[0].text];
+			long imm = value(instruction.operands[1], labels);
 			byte[] code = [
 				cast(byte)(0x48 | (reg >= 8 ? 1 : 0)),
 				cast(byte)(0xb8 + (reg & 7))
 			];
 			foreach (i; 0..8) code ~= cast(byte)(imm >> (i * 8));
+			return code;
+		case "db":
+			byte[] code;
+			foreach (operand; instruction.operands) {
+				if (operand.kind == TokenKind.text) foreach (c; operand.text) code ~= cast(byte) c;
+				else code ~= cast(byte) to!long(operand.text);
+			}
 			return code;
 		default: return [];
 	}
@@ -106,7 +122,8 @@ byte[] assemble(SourceLine[] lines, string filename) {
 	Label[string] labels;
 	string parentLabel;
 	uint num = 1;
-	byte[] bytes;
+	Instruction[] instructions;
+	// first pass: collect instructions and label offsets
 	foreach(line; lines) {
 		Token[] tokens = tokenize(line.path, line.filename, num++, line.text);
 		if (tokens.length == 0) continue;
@@ -124,13 +141,16 @@ byte[] assemble(SourceLine[] lines, string filename) {
 		if (tokens.length == 0) continue;
 		switch (tokens[0].kind) {
 			case TokenKind.keyword: processKeywords(tokens); break;
-			default: 
-				byte[] encoded = processInstruction(tokens).bytes;
-				offset += encoded.length;
-				bytes ~= encoded;
+			default:
+				Instruction instruction = processInstruction(tokens);
+				offset += instruction.bytes(labels).length;
+				instructions ~= instruction;
 		}
 		writeln(tokens);
 	}
+	// second pass: encode with all labels known
+	byte[] bytes;
+	foreach (instruction; instructions) bytes ~= instruction.bytes(labels);
 	ulong appsize = elf64.length + bytes.length;
 	elf64[0x60] = cast(byte)(appsize & 0xff);
 	elf64[0x68] = cast(byte)(appsize & 0xff);

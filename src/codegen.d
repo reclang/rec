@@ -4,6 +4,13 @@ import std.stdio;
 import std.format;
 import parser;
 
+string[] strings;
+
+string addString(string text) {
+	strings ~= text;
+	return format("str%d", strings.length - 1);
+}
+
 string genFunction(Node node, string name) {
 	string s;
 	s ~= format("%s:\n", name);
@@ -13,7 +20,11 @@ string genFunction(Node node, string name) {
 
 string genCall(Node node) {
 	switch (node.name) {
-		case "exit": return format("\tmov\trax, 60\n\tmov\trdi, %s\n\tsyscall\n", node.params[0]);
+		case "exit": return format("\tmov\trax, 60\n\tmov\trdi, %s\n\tsyscall\n", node.params[0].text);
+		case "writeln":
+			string text = node.params[0].text;
+			string label = addString(text);
+			return format("\tmov\trax, 1\n\tmov\trdi, 1\n\tmov\trsi, %s\n\tmov\trdx, %d\n\tsyscall\n", label, text.length + 1);
 		default: return format("call %s\n", node.name);
 	}
 }
@@ -33,5 +44,6 @@ string genCode(Node program) {
 	s ~= "entry _start\n";
 	s ~= "segment readable executable\n";
 	foreach(node; program.children) s ~= genNode(node);
+	foreach(i, text; strings) s ~= format("str%d:\n\tdb\t\"%s\", 10\n", i, text);
 	return s;
 }
