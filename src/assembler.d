@@ -113,5 +113,7 @@ ubyte[] assemble(SourceLine[] lines, string filename) {
 	if (auto label = entryLabel in labels) entryOffset = label.offset;
 	else stderr.writefln("warning: entry label '%s' not found, using code offset 0", entryLabel);
 	File(filename, "wb").rawWrite(executableImage(bytes, entryOffset));
+	// make out file executable
+	version (Posix) setAttributes(filename, octal!755);
 	return bytes;
 }
