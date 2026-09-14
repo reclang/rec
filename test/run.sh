@@ -36,7 +36,8 @@ bad() {
 }
 
 tmp=$(mktemp) || exit 2
-trap 'rm -f "$tmp"' EXIT
+bin=$(mktemp) || exit 2
+trap 'rm -f "$tmp" "$bin"' EXIT
 
 # ---------------------------------------------------------
 # Add a check by calling ok/bad with a one-line description
@@ -65,6 +66,41 @@ if printf '%s\n' "$expected" | cmp -s - "$tmp"; then
     ok "reclang --version prints exactly '$expected'"
 else
     bad "reclang --version prints exactly '$expected'" "got '$(cat "$tmp")'"
+fi
+
+# test/min-1.rec compiles to an ELF64 executable that runs
+# (a noexec TMPDIR makes the run step fail with 126: use TMPDIR=$root)
+"$reclang" -o "$bin" "$root/test/min-1.rec" > /dev/null 2>&1
+status=$?
+if [ "$status" -eq 0 ] && [ -x "$bin" ]; then
+    ok "reclang -o compiles test/min-1.rec"
+else
+    bad "reclang -o compiles test/min-1.rec" "exit status $status"
+fi
+
+"$bin" > "$tmp" 2>&1
+status=$?
+if [ "$status" -eq 42 ]; then
+    ok "min-1 exits 42"
+else
+    bad "min-1 exits 42" "exit status $status"
+fi
+
+if printf 'Hello, world!\n' | cmp -s - "$tmp"; then
+    ok "min-1 prints 'Hello, world!'"
+else
+    bad "min-1 prints 'Hello, world!'" "got '$(cat "$tmp")'"
+fi
+
+if command -v readelf > /dev/null 2>&1; then
+    readelf -h -l "$bin" > "$tmp" 2>&1
+    if grep -q 'OS/ABI: *UNIX - System V' "$tmp" \
+       && grep -q 'Entry point address: *0x400078' "$tmp" \
+       && grep -q '^  LOAD ' "$tmp"; then
+        ok "readelf -h -l accepts min-1"
+    else
+        bad "readelf -h -l accepts min-1" "$(head -n 1 "$tmp")"
+    fi
 fi
 
 echo "$pass passed, $fail failed"
