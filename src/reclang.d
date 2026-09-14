@@ -56,7 +56,7 @@ int main(string[] args) {
 
 	SourceLine[] fullcode = preprocess(asmcode.splitLines);
 	foreach (l; fullcode) writefln("%s/%s:%d: %s", l.path, l.filename, l.num, l.text);
-	byte[] bytes = assemble(fullcode, arguments.outputFile);
+	ubyte[] bytes = assemble(fullcode, arguments.outputFile);
 
 	return 0;
 }
