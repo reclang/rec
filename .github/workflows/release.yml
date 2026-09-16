@@ -1,0 +1,137 @@
+# Release: an annotated tag vX.Y.Z pushed to GitHub builds the release
+# assets and publishes them as a GitHub release. Plan and asset contract:
+# rec-exp/docs/packaging.md, stage 1; consumer: packaging/install.sh.
+#
+#   reclang-X.Y.Z.tar.gz                source, git archive
+#   reclang-X.Y.Z-linux-x86_64.tar.gz   reclang, reclang.1, LICENSE in one
+#                                       directory; D runtime linked in,
+#                                       needs glibc 2.35 (Ubuntu 22.04) or newer
+#   SHA256SUMS                          sha256sum of both; install.sh reads it
+#
+# The tag must be the VERSION file with a v in front, and annotated: its
+# body becomes the release notes. Dry run with act, publishing skipped:
+#
+#   printf '{"ref":"refs/tags/v%s"}\n' "$(cat VERSION)" > /tmp/tag.json
+#   act push -e /tmp/tag.json --artifact-server-path /tmp/act-artifacts
+
+name: release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+env:
+  LDC_VERSION: 1.43.0
+
+jobs:
+  version:
+    name: tag matches VERSION
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.check.outputs.version }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - id: check
+        run: |
+          version=${GITHUB_REF_NAME#v}
+          file=$(cat VERSION)
+          if [ "$version" != "$file" ]; then
+            echo "::error::tag $GITHUB_REF_NAME does not match VERSION file: $file"
+            exit 1
+          fi
+          if git rev-parse -q --verify "refs/tags/$GITHUB_REF_NAME^{tag}" > /dev/null 2>&1; then
+            echo "annotated tag $GITHUB_REF_NAME, version $version"
+          elif git rev-parse -q --verify "refs/tags/$GITHUB_REF_NAME" > /dev/null; then
+            echo "::error::$GITHUB_REF_NAME is a lightweight tag; release tags are annotated"
+            exit 1
+          else
+            echo "tag $GITHUB_REF_NAME is not in this checkout (dry run); annotation not checked"
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+  linux-x86_64:
+    name: build linux-x86_64
+    needs: version
+    runs-on: ubuntu-latest
+    # Link on the oldest glibc the binary must run on: 2.35 in Ubuntu 22.04,
+    # older than Debian 12's 2.36. Its distro ldc is below the 1.36 floor, so
+    # the compiler comes from the upstream tarball instead.
+    container: ubuntu:22.04
+    env:
+      VERSION: ${{ needs.version.outputs.version }}
+      TARGET: linux-x86_64
+    steps:
+      - name: Install build tools
+        run: |
+          apt-get update
+          DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+            ca-certificates curl xz-utils git build-essential
+      - uses: actions/checkout@v5
+      - name: Install ldc ${{ env.LDC_VERSION }}
+        run: |
+          curl -fsSL "https://github.com/ldc-developers/ldc/releases/download/v$LDC_VERSION/ldc2-$LDC_VERSION-linux-x86_64.tar.xz" \
+            | tar -xJ -C /opt
+          echo "/opt/ldc2-$LDC_VERSION-linux-x86_64/bin" >> "$GITHUB_PATH"
+      - name: Build
+        run: make DFLAGS="-O -release -link-defaultlib-shared=false"
+      - name: Check
+        run: make check
+      - name: Inspect linking
+        run: |
+          ldd reclang
+          if ldd reclang | grep -Eq 'phobos|druntime'; then
+            echo "::error::the D runtime is linked dynamically"
+            exit 1
+          fi
+          echo "needs $(objdump -T reclang | grep -o 'GLIBC_[0-9.]*' | sort -uV | tail -n 1)"
+      - name: Pack
+        run: |
+          dir=reclang-$VERSION-$TARGET
+          mkdir "$dir"
+          cp reclang doc/reclang.1 LICENSE "$dir"
+          tar --owner=0 --group=0 --numeric-owner -czf "$dir.tar.gz" "$dir"
+          tar -tzvf "$dir.tar.gz"
+      - uses: actions/upload-artifact@v5
+        with:
+          name: ${{ env.TARGET }}
+          path: reclang-${{ env.VERSION }}-${{ env.TARGET }}.tar.gz
+          if-no-files-found: error
+
+  release:
+    name: publish
+    needs: [version, linux-x86_64]
+    runs-on: ubuntu-latest
+    env:
+      VERSION: ${{ needs.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - name: Source tarball
+        run: |
+          mkdir dist
+          ref=refs/tags/v$VERSION
+          git rev-parse -q --verify "$ref" > /dev/null || ref=HEAD    # dry run
+          git archive --prefix="reclang-$VERSION/" -o "dist/reclang-$VERSION.tar.gz" "$ref"
+      - uses: actions/download-artifact@v5
+        with:
+          path: dist
+          merge-multiple: true
+      - name: Checksums
+        run: |
+          cd dist
+          sha256sum reclang-*.tar.gz > SHA256SUMS
+          cat SHA256SUMS
+      - name: Create the GitHub release
+        if: ${{ !env.ACT }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          git tag -l --format='%(contents:body)' "v$VERSION" > notes.md
+          gh release create "v$VERSION" --verify-tag --title "reclang $VERSION" \
+            --notes-file notes.md dist/*
