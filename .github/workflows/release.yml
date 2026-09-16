@@ -34,8 +34,12 @@ jobs:
       version: ${{ steps.check.outputs.version }}
     steps:
       - uses: actions/checkout@v5
-        with:
-          fetch-depth: 0
+      # checkout leaves a lightweight copy of the tag at the commit
+      # (actions/checkout#290); the annotation check needs the tag object
+      - name: Fetch the tag object
+        run: |
+          git fetch --force --no-tags origin "refs/tags/$GITHUB_REF_NAME:refs/tags/$GITHUB_REF_NAME" \
+            || echo "tag $GITHUB_REF_NAME not fetched (dry run)"
       - id: check
         run: |
           version=${GITHUB_REF_NAME#v}
@@ -110,8 +114,11 @@ jobs:
       VERSION: ${{ needs.version.outputs.version }}
     steps:
       - uses: actions/checkout@v5
-        with:
-          fetch-depth: 0
+      # same as above: the tag body is the release notes
+      - name: Fetch the tag object
+        run: |
+          git fetch --force --no-tags origin "refs/tags/v$VERSION:refs/tags/v$VERSION" \
+            || echo "tag v$VERSION not fetched (dry run)"
       - name: Source tarball
         run: |
           mkdir dist
@@ -133,5 +140,9 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           git tag -l --format='%(contents:body)' "v$VERSION" > notes.md
+          if ! grep -q '[^[:space:]]' notes.md; then
+            echo "::error::tag v$VERSION has no body; the release notes would be empty"
+            exit 1
+          fi
           gh release create "v$VERSION" --verify-tag --title "reclang $VERSION" \
             --notes-file notes.md dist/*
