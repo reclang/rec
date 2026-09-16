@@ -1,11 +1,13 @@
 # Changelog
 
-## [Unreleased]
-
-## [0.0.2] - 2026-09-16
+## [0.0.3] - 2026-09-16
 
 First release with prebuilt binaries: reclang installs with one command,
 no D compiler needed.
+
+## [0.0.2] - 2026-09-16
+
+Github release script and `install.sh` for manual installation. 
 
 ### Added
 
