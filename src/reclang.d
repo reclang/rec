@@ -29,6 +29,10 @@ void showHelp() {
 
 int main(string[] args) {
 	Arguments arguments = processArguments(args);
+	if (arguments.error.length != 0) {
+		writeln(arguments.error);
+		return 1;
+	}
 	if (arguments.showVersion) {
 		showVersion();
 		return 0;

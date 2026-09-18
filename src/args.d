@@ -2,6 +2,19 @@ module args;
 
 import std.string;
 import std.path : absolutePath, buildNormalizedPath, baseName;
+import std.traits : EnumMembers;
+import std.algorithm: map;
+import std.algorithm.searching: canFind;
+import std.array: join;
+
+enum Arch: string {
+    //  x86, x86_64, arm, aarch64, mips, mips64, powerpc, powerpc64, riscv32, riscv64, s390x, sparc, sparc64, wasm32, wasm64
+    x86_64 = "x86_64"
+}
+
+bool isValidArch(string arch) {
+    return [EnumMembers!Arch].canFind(arch);
+}
 
 struct Arguments {
     string[] filenames;
@@ -46,7 +59,12 @@ Arguments processArguments(string[] args) {
                 string k = a[1..$], v = args[i++ + 1];
                 switch (k) {
                     case "o": arguments.outputFile = v; break;
-                    case "a": arguments.arch = v; break;
+                    case "a":
+                        if (!isValidArch(v)) {
+                            arguments.error = "Unsupported architecture: " ~ v ~ "\nSupported values: " ~ join([EnumMembers!Arch].map!(a => cast(string) a), ", ");
+                            return arguments;
+                        }
+                        arguments.arch = v; break;
                     case "i": arguments.include = v; break;
                     case "s": arguments.path = v; break;
                     default:
