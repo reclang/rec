@@ -68,6 +68,21 @@ else
     bad "reclang --version prints exactly '$expected'" "got '$(cat "$tmp")'"
 fi
 
+# reclang -a rejects an unsupported architecture without writing output,
+# and lists the supported ones on stderr
+msg=$("$reclang" -o "$bin" -a no-such-arch "$root/test/min-1.rec" 2>&1 > /dev/null)
+status=$?
+if [ "$status" -ne 0 ] && [ ! -s "$bin" ]; then
+    ok "reclang -a no-such-arch fails"
+else
+    bad "reclang -a no-such-arch fails" "exit status $status"
+fi
+
+case $msg in
+    *x86_64*) ok "reclang -a no-such-arch lists x86_64 on stderr" ;;
+    *)        bad "reclang -a no-such-arch lists x86_64 on stderr" "got '$msg'" ;;
+esac
+
 # test/min-1.rec compiles to an ELF64 executable that runs
 # (a noexec TMPDIR makes the run step fail with 126: use TMPDIR=$root)
 "$reclang" -o "$bin" "$root/test/min-1.rec" > /dev/null 2>&1
