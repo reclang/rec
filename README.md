@@ -52,3 +52,8 @@ Run `make`, `make check` and `make install` as below.
 - `make`             - builds `reclang`
 - `make check`       - runs `test/run.sh`
 - `make install`     - installs binary and man page under `PREFIX`
+
+## License
+
+Apache License 2.0 with LLVM Exception (`Apache-2.0 WITH LLVM-exception`).
+See [LICENSE](LICENSE).
