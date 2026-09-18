@@ -22,7 +22,7 @@ void showHelp() {
     -o FILENAME     output file name
     -s PATH         path for source files
     -i PATH         path for include files
-    -a ARCH         target architechture
+    -a ARCH         target architecture
 	}.strip;
 	writeln(help);
 }
