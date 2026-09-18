@@ -1,6 +1,6 @@
 # CI: every push to main or develop, and every pull request into develop,
 # is built, tested and installed with the oldest and the newest supported
-# compilers. Plan: rec-exp/docs/packaging.md, stage 0.
+# compilers.
 #
 #   floor    ldc 1.36 from Ubuntu 24.04, the minimum supported version
 #   void     ldc from Void, the daily platform
@@ -9,12 +9,7 @@
 #            Linux program, which macOS cannot execute
 #
 # Every job runs make, make check and make install into a DESTDIR, and
-# checks that exactly the binary and the man page were installed. Local
-# run with act (it skips the macOS leg, which only runs on GitHub):
-#
-#   act push -j floor
-#   act push -j void
-#   act push -j latest
+# checks that exactly the binary and the man page were installed.
 
 name: ci
 

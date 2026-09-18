@@ -1,6 +1,5 @@
 # Release: an annotated tag vX.Y.Z pushed to GitHub builds the release
-# assets and publishes them as a GitHub release. Plan and asset contract:
-# rec-exp/docs/packaging.md, stage 1; consumer: packaging/install.sh.
+# assets and publishes them as a GitHub release.
 #
 #   reclang-X.Y.Z.tar.gz                source, git archive
 #   reclang-X.Y.Z-linux-x86_64.tar.gz   reclang, reclang.1, LICENSE in one
@@ -8,7 +7,8 @@
 #                                       needs glibc 2.35 (Ubuntu 22.04) or newer
 #   SHA256SUMS                          sha256sum of both; install.sh reads it
 #
-# The tag must be the VERSION file with a v in front, and annotated: its
+# The tag must be the version value fron the VERSION file with a v in front,
+# i.e., "1.0.0" in the VERSION file and "v1.0.0" tag;
 # body becomes the release notes, without the changelog heading, which the
 # release title "Rec X.Y.Z" replaces. Dry run with act, publishing skipped:
 #
