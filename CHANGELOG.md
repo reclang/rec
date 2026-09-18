@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.0.4] - 2026-09-18
+
+Moved to a new repo, https://github.com/reclang/rec,
+updated Github workflows and the install.sh file.
+
 ## [0.0.3] - 2026-09-16
 
 First release with prebuilt binaries: reclang installs with one command,
