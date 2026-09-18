@@ -8,7 +8,7 @@
 #     $PREFIX/bin/reclang
 #     $PREFIX/share/man/man1/reclang.1
 #
-# Usage: curl -fsSL https://raw.githubusercontent.com/reclang/reclang/main/packaging/install.sh | sh
+# Usage: curl -fsSL https://raw.githubusercontent.com/reclang/rec/main/packaging/install.sh | sh
 #
 #     PREFIX     install prefix: ~/.local, or /usr/local when run as root
 #     VERSION    release to install as X.Y.Z; the latest release by default
@@ -30,7 +30,7 @@
 
 set -u
 
-releases=${RECLANG_RELEASES:-https://github.com/reclang/reclang/releases}
+releases=${RECLANG_RELEASES:-https://github.com/reclang/rec/releases}
 releases=${releases%/}
 
 err() {
@@ -71,7 +71,7 @@ detect_platform() {
             ;;
         *)
             err "no prebuilt reclang for $os $arch" \
-                "build from source: https://github.com/reclang/reclang"
+                "build from source: https://github.com/reclang/rec"
             ;;
     esac
     platform=$os-$arch$libc
@@ -175,7 +175,7 @@ find_release() {
     if [ -z "$expected" ]; then
         echo "install.sh: no prebuilt reclang $version for $platform; the release has:" >&2
         awk '{ print "  " $2 }' "$tmp/SHA256SUMS" >&2
-        echo "  build from source: https://github.com/reclang/reclang" >&2
+        echo "  build from source: https://github.com/reclang/rec" >&2
         exit 1
     fi
 }

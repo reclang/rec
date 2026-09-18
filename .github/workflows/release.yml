@@ -9,7 +9,8 @@
 #   SHA256SUMS                          sha256sum of both; install.sh reads it
 #
 # The tag must be the VERSION file with a v in front, and annotated: its
-# body becomes the release notes. Dry run with act, publishing skipped:
+# body becomes the release notes, without the changelog heading, which the
+# release title "Rec X.Y.Z" replaces. Dry run with act, publishing skipped:
 #
 #   printf '{"ref":"refs/tags/v%s"}\n' "$(cat VERSION)" > /tmp/tag.json
 #   act push -e /tmp/tag.json --artifact-server-path /tmp/act-artifacts
@@ -139,10 +140,14 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          git tag -l --format='%(contents:body)' "v$VERSION" > notes.md
+          # drop the "## [X.Y.Z] - date" heading and the blank lines after it
+          git tag -l --format='%(contents:body)' "v$VERSION" \
+            | awk 'NR == 1 && /^## \[/ { skip = 1; next }
+                   skip && /^[[:space:]]*$/ { next }
+                   { skip = 0; print }' > notes.md
           if ! grep -q '[^[:space:]]' notes.md; then
             echo "::error::tag v$VERSION has no body; the release notes would be empty"
             exit 1
           fi
-          gh release create "v$VERSION" --verify-tag --title "reclang $VERSION" \
+          gh release create "v$VERSION" --verify-tag --title "Rec $VERSION" \
             --notes-file notes.md dist/*

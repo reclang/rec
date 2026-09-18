@@ -12,7 +12,7 @@
 ### With the install script
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/reclang/reclang/main/packaging/install.sh | sh
+curl -fsSL https://raw.githubusercontent.com/reclang/rec/main/packaging/install.sh | sh
 ```
 
 Downloads the latest release and installs it and its man page under `~/.local`.
@@ -27,7 +27,7 @@ To uninstall, remove `PREFIX/bin/reclang` and `PREFIX/share/man/man1/reclang.1`.
 ### By hand from GitHub Releases
 
 Prebuilt binaries live at
-<https://github.com/reclang/reclang/releases>.
+<https://github.com/reclang/rec/releases>.
 Download `reclang-X.Y.Z-linux-x86_64.tar.gz` and `SHA256SUMS`, then:
 
 ```sh
