@@ -1,0 +1,112 @@
+# CI: every push to main or develop, and every pull request into develop,
+# is built, tested and installed with the oldest and the newest supported
+# compilers. Plan: rec-exp/docs/packaging.md, stage 0.
+#
+#   floor    ldc 1.36 from Ubuntu 24.04, the minimum supported version
+#   void     ldc from Void, the daily platform
+#   latest   current ldc and dmd through setup-dlang, and ldc on macOS;
+#            macOS fails until 0.0.5: make check runs the compiled x86-64
+#            Linux program, which macOS cannot execute
+#
+# Every job runs make, make check and make install into a DESTDIR, and
+# checks that exactly the binary and the man page were installed. Local
+# run with act (it skips the macOS leg, which only runs on GitHub):
+#
+#   act push -j floor
+#   act push -j void
+#   act push -j latest
+
+name: ci
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [develop]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  floor:
+    name: ldc 1.36, Ubuntu 24.04
+    runs-on: ubuntu-latest
+    container: ubuntu:24.04
+    steps:
+      - name: Install build tools
+        run: |
+          apt-get update
+          DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+            ca-certificates git build-essential ldc
+      - uses: actions/checkout@v5
+      - name: Compiler
+        run: ldc2 --version
+      - name: Build
+        run: make
+      - name: Check
+        run: make check
+      - name: Install
+        run: |
+          make DESTDIR=/tmp/x install
+          find /tmp/x -type f | sort | tee /tmp/installed
+          printf '%s\n' /tmp/x/usr/local/bin/reclang /tmp/x/usr/local/share/man/man1/reclang.1 \
+            | diff - /tmp/installed
+
+  void:
+    name: ldc, Void
+    runs-on: ubuntu-latest
+    container: ghcr.io/void-linux/void-glibc-full:latest
+    steps:
+      # xbps updates itself first, or it refuses to install anything;
+      # libstdc++ is for the node binary that runs actions/checkout
+      - name: Install build tools
+        run: |
+          xbps-install -Syu xbps
+          xbps-install -yu
+          xbps-install -y git gcc make libstdc++ ldc
+      - uses: actions/checkout@v5
+      - name: Compiler
+        run: ldc2 --version
+      - name: Build
+        run: make
+      - name: Check
+        run: make check
+      - name: Install
+        run: |
+          make DESTDIR=/tmp/x install
+          find /tmp/x -type f | sort | tee /tmp/installed
+          printf '%s\n' /tmp/x/usr/local/bin/reclang /tmp/x/usr/local/share/man/man1/reclang.1 \
+            | diff - /tmp/installed
+
+  latest:
+    name: ${{ matrix.compiler }}, ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: ubuntu-latest, compiler: ldc-latest }
+          - { os: ubuntu-latest, compiler: dmd-latest }
+          - { os: macos-latest, compiler: ldc-latest }
+    steps:
+      - uses: actions/checkout@v5
+      # sets DC to the compiler it installed, which the Makefile picks up
+      - uses: dlang-community/setup-dlang@v2
+        with:
+          compiler: ${{ matrix.compiler }}
+      - name: Compiler
+        run: $DC --version
+      - name: Build
+        run: make
+      - name: Check
+        run: make check
+      - name: Install
+        run: |
+          make DESTDIR=/tmp/x install
+          find /tmp/x -type f | sort | tee /tmp/installed
+          printf '%s\n' /tmp/x/usr/local/bin/reclang /tmp/x/usr/local/share/man/man1/reclang.1 \
+            | diff - /tmp/installed
