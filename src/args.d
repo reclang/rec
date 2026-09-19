@@ -7,9 +7,33 @@ import std.algorithm: map;
 import std.algorithm.searching: canFind;
 import std.array: join;
 
+// host arch and os values
+version (X86_64)       enum hostArch = "x86_64";
+else version (AArch64) enum hostArch = "aarch64";
+else version (X86)     enum hostArch = "x86";
+else version (ARM)     enum hostArch = "arm";
+else version (RISCV64) enum hostArch = "riscv64";
+else                   enum hostArch = "unknown";
+
+version (linux)        enum hostOS = "linux";
+else version (OSX)     enum hostOS = "macos";
+else version (FreeBSD) enum hostOS = "freebsd";
+else version (OpenBSD) enum hostOS = "openbsd";
+else version (NetBSD)  enum hostOS = "netbsd";
+else version (Windows) enum hostOS = "windows";
+else                   enum hostOS = "unknown";
+
+enum hostTarget = hostArch ~ "-" ~ hostOS;
+
 enum Arch: string {
     //  x86, x86_64, arm, aarch64, mips, mips64, powerpc, powerpc64, riscv32, riscv64, s390x, sparc, sparc64, wasm32, wasm64
-    x86_64 = "x86_64"
+    x86_64 = "x86_64",
+    aarch64 = "aarch64"
+}
+
+enum OS: string {
+	linux = "linux",
+	macos = "macos"
 }
 
 bool isValidArch(string arch) {
