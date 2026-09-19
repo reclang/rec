@@ -51,7 +51,7 @@ int main(string[] args) {
 		parse(program, tokens);
 		program.printNode;
 	}
-	string asmcode = genCode(program);
+	string asmcode = genCode(program, arguments.target);
 	writeln(asmcode);
 
 	//string outputPath = arguments.outputFile.length > 0 ? arguments.outputFile : "./out.asm";
