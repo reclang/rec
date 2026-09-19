@@ -2,9 +2,8 @@ module args;
 
 import std.string;
 import std.path : absolutePath, buildNormalizedPath, baseName;
-import std.traits : EnumMembers;
 import std.algorithm: map;
-import std.algorithm.searching: canFind;
+import std.algorithm.searching: find;
 import std.array: join;
 
 // host arch and os values
@@ -36,15 +35,24 @@ enum OS: string {
 	macos = "macos"
 }
 
-bool isValidArch(string arch) {
-    return [EnumMembers!Arch].canFind(arch);
+struct Target {
+    Arch arch;
+    OS os;
+
+    string toString() { return arch ~ "-" ~ os; }
 }
+
+// supported ARCH-OS combinations
+Target[] supportedTargets = [
+    Target(Arch.x86_64, OS.linux),
+    Target(Arch.aarch64, OS.macos),
+];
 
 struct Arguments {
     string[] filenames;
     string name;
     string outputFile;
-    string arch;
+    Target target;
     string include;
     string path;
     string error;
@@ -64,6 +72,7 @@ string withoutExtension(string path) {
 
 Arguments processArguments(string[] args) {
     Arguments arguments;
+    string target = hostTarget;
     for(int i = 1; i < args.length; i++) {
         string a = args[i];
         // anything without the leading dash is a file
@@ -83,12 +92,7 @@ Arguments processArguments(string[] args) {
                 string k = a[1..$], v = args[i++ + 1];
                 switch (k) {
                     case "o": arguments.outputFile = v; break;
-                    case "a":
-                        if (!isValidArch(v)) {
-                            arguments.error = "Unsupported architecture: " ~ v ~ "\nSupported values: " ~ join([EnumMembers!Arch].map!(a => cast(string) a), ", ");
-                            return arguments;
-                        }
-                        arguments.arch = v; break;
+                    case "t": target = v; break;
                     case "i": arguments.include = v; break;
                     case "s": arguments.path = v; break;
                     default:
@@ -98,6 +102,14 @@ Arguments processArguments(string[] args) {
                 break;
         }
     }
+    // -t target defaults to the host
+    Target[] targets = supportedTargets.find!(t => t.toString == target);
+    if (targets.length == 0) {
+        arguments.error = "Unsupported target: " ~ target ~ "\nSupported values: " ~ join(supportedTargets.map!(t => t.toString), ", ");
+        return arguments;
+    }
+    arguments.target = targets[0];
+    // paths
     string currentPath = ".".normalizePath;
     arguments.path = arguments.path.length == 0 ? currentPath : arguments.path.normalizePath;
     arguments.include = arguments.include.length == 0 ? currentPath : arguments.include.normalizePath;
