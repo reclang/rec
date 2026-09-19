@@ -68,19 +68,19 @@ else
     bad "reclang --version prints exactly '$expected'" "got '$(cat "$tmp")'"
 fi
 
-# reclang -a rejects an unsupported architecture without writing output,
+# reclang -t rejects an unsupported target without writing output,
 # and lists the supported ones on stderr
-msg=$("$reclang" -o "$bin" -a no-such-arch "$root/test/min-1.rec" 2>&1 > /dev/null)
+msg=$("$reclang" -o "$bin" -t no-such-target "$root/test/min-1.rec" 2>&1 > /dev/null)
 status=$?
 if [ "$status" -ne 0 ] && [ ! -s "$bin" ]; then
-    ok "reclang -a no-such-arch fails"
+    ok "reclang -t no-such-target fails"
 else
-    bad "reclang -a no-such-arch fails" "exit status $status"
+    bad "reclang -t no-such-target fails" "exit status $status"
 fi
 
 case $msg in
-    *x86_64*) ok "reclang -a no-such-arch lists x86_64 on stderr" ;;
-    *)        bad "reclang -a no-such-arch lists x86_64 on stderr" "got '$msg'" ;;
+    *x86_64-linux*) ok "reclang -t no-such-target lists x86_64-linux on stderr" ;;
+    *)              bad "reclang -t no-such-target lists x86_64-linux on stderr" "got '$msg'" ;;
 esac
 
 # test/min-1.rec compiles to an ELF64 executable that runs
