@@ -22,7 +22,7 @@ void showHelp() {
     -o FILENAME     output file name
     -s PATH         path for source files
     -i PATH         path for include files
-    -a ARCH         target architecture
+    -t ARCH-OS      target, defaults to the host
 	}.strip;
 	writeln(help);
 }
