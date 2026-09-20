@@ -60,7 +60,12 @@ int main(string[] args) {
 
 	SourceLine[] fullcode = preprocess(asmcode.splitLines);
 	foreach (l; fullcode) writefln("%s/%s:%d: %s", l.path, l.filename, l.num, l.text);
-	ubyte[] bytes = assemble(fullcode, arguments.outputFile);
+	try {
+		assemble(fullcode, arguments.outputFile, arguments.target);
+	} catch (Exception e) {
+		stderr.writeln(e.msg);
+		return 1;
+	}
 
 	return 0;
 }
