@@ -21,6 +21,7 @@ fi
 
 pass=0
 fail=0
+skip=0
 
 ok() {
     pass=$((pass + 1))
@@ -35,9 +36,49 @@ bad() {
     fi
 }
 
+# skipped DESCRIPTION REASON: for a check this host cannot make
+skipped() {
+    skip=$((skip + 1))
+    echo "skip $1"
+    printf '     %s\n' "$2"
+}
+
+# the target reclang builds for here, spelled as reclang spells it
+case $(uname -m) in
+    x86_64|amd64)  hostArch=x86_64 ;;
+    arm64|aarch64) hostArch=aarch64 ;;
+    *)             hostArch=unknown ;;
+esac
+case $(uname -s) in
+    Linux)  hostOS=linux ;;
+    Darwin) hostOS=macos ;;
+    *)      hostOS=unknown ;;
+esac
+host=$hostArch-$hostOS
+
+# hex FILE OFFSET COUNT: COUNT bytes of FILE at OFFSET as one hex string
+# (-v stops od collapsing repeated lines; bytewise output is endian-proof)
+hex() {
+    od -A n -t x1 -v -j "$2" -N "$3" "$1" | tr -d ' \t\n'
+}
+
+# check_hex DESCRIPTION FILE OFFSET EXPECTED
+check_hex() {
+    got=$(hex "$2" "$3" $((${#4} / 2)))
+    if [ "$got" = "$4" ]; then
+        ok "$1"
+    else
+        bad "$1" "got $got"
+    fi
+}
+
 tmp=$(mktemp) || exit 2
 bin=$(mktemp) || exit 2
-trap 'rm -f "$tmp" "$bin"' EXIT
+cross=$(mktemp) || exit 2
+# two directories, for the same output name built for two targets
+dir1=$(mktemp -d) || exit 2
+dir2=$(mktemp -d) || exit 2
+trap 'rm -rf "$tmp" "$bin" "$cross" "$dir1" "$dir2"' EXIT
 
 # ---------------------------------------------------------
 # Add a check by calling ok/bad with a one-line description
@@ -83,7 +124,7 @@ case $msg in
     *)              bad "reclang -t no-such-target lists x86_64-linux on stderr" "got '$msg'" ;;
 esac
 
-# test/min-1.rec compiles to an ELF64 executable that runs
+# test/min-1.rec compiles for the host and runs
 # (a noexec TMPDIR makes the run step fail with 126: use TMPDIR=$root)
 "$reclang" -o "$bin" "$root/test/min-1.rec" > /dev/null 2>&1
 status=$?
@@ -107,7 +148,30 @@ else
     bad "min-1 prints 'Hello, world!'" "got '$(cat "$tmp")'"
 fi
 
-if command -v readelf > /dev/null 2>&1; then
+# test/min-0.rec compiles for the host and runs
+"$reclang" -o "$bin" "$root/test/min-0.rec" > /dev/null 2>&1
+"$bin" > /dev/null 2>&1
+status=$?
+if [ "$status" -eq 42 ]; then
+    ok "min-0 exits 42"
+else
+    bad "min-0 exits 42" "exit status $status"
+fi
+
+# macOS caches code-signature state per vnode, so a signed binary rewritten
+# in place is SIGKILLed (status 137) the next time it runs. The output above
+# was min-0; compiling min-1 over it must still give a binary that runs.
+"$reclang" -o "$bin" "$root/test/min-1.rec" > /dev/null 2>&1
+"$bin" > /dev/null 2>&1
+status=$?
+if [ "$status" -eq 42 ]; then
+    ok "a second program compiled to the same path runs"
+else
+    bad "a second program compiled to the same path runs" "exit status $status"
+fi
+
+# the ELF checks below describe x86_64-linux output only
+if [ "$host" = x86_64-linux ] && command -v readelf > /dev/null 2>&1; then
     readelf -h -l "$bin" > "$tmp" 2>&1
     if grep -q 'OS/ABI: *UNIX - System V' "$tmp" \
        && grep -q 'Entry point address: *0x400078' "$tmp" \
@@ -118,5 +182,51 @@ if command -v readelf > /dev/null 2>&1; then
     fi
 fi
 
-echo "$pass passed, $fail failed"
+# -t aarch64-macos writes a signed Mach-O executable on any host; its bytes
+# are checked everywhere, and it runs where it can
+"$reclang" -t aarch64-macos -o "$cross" "$root/test/min-1.rec" > /dev/null 2>&1
+status=$?
+if [ "$status" -eq 0 ]; then
+    ok "reclang -t aarch64-macos compiles test/min-1.rec"
+else
+    bad "reclang -t aarch64-macos compiles test/min-1.rec" "exit status $status"
+fi
+
+check_hex "aarch64-macos min-1 has the Mach-O 64 magic" "$cross" 0 cffaedfe
+check_hex "aarch64-macos min-1 is arm64" "$cross" 4 0c000001
+# code at 0x260: mov x16, 4; mov x0, 1; adr x1, str0; mov x2, 14; svc 128;
+# mov x16, 1; mov x0, 42; svc 128; str0: "Hello, world!", 10
+check_hex "aarch64-macos min-1 code" "$cross" 0x260 \
+900080d2200080d2c1000010c20180d2011000d4300080d2400580d2011000d448656c6c6f2c20776f726c64210a
+
+if [ "$host" = aarch64-macos ]; then
+    "$cross" > "$tmp" 2>&1
+    status=$?
+    if [ "$status" -eq 42 ] && printf 'Hello, world!\n' | cmp -s - "$tmp"; then
+        ok "aarch64-macos min-1 runs"
+    else
+        bad "aarch64-macos min-1 runs" "exit status $status, output '$(cat "$tmp")'"
+    fi
+
+    # reclang signs its output itself, so the system must accept the signature
+    if codesign --verify --strict "$cross" > "$tmp" 2>&1; then
+        ok "codesign --verify --strict accepts min-1"
+    else
+        bad "codesign --verify --strict accepts min-1" "$(cat "$tmp")"
+    fi
+
+    # the default target is this host's, so both ways give the same file
+    # (same basename: the signature carries it as the identifier)
+    "$reclang" -o "$dir1/min-1" "$root/test/min-1.rec" > /dev/null 2>&1
+    "$reclang" -t aarch64-macos -o "$dir2/min-1" "$root/test/min-1.rec" > /dev/null 2>&1
+    if cmp -s "$dir1/min-1" "$dir2/min-1"; then
+        ok "the default target and -t aarch64-macos give the same file"
+    else
+        bad "the default target and -t aarch64-macos give the same file"
+    fi
+else
+    skipped "aarch64-macos min-1 runs" "$host cannot run aarch64-macos output"
+fi
+
+echo "$pass passed, $fail failed, $skip skipped"
 [ "$fail" -eq 0 ]
