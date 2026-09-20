@@ -2,8 +2,9 @@ module assembler;
 
 import std.stdio;
 import std.conv : octal, to, ConvException;
-import std.file : setAttributes;
+import std.file : exists, remove, setAttributes;
 import std.format : format;
+import std.path : baseName;
 import args;
 import pp;
 import tokenizer;
@@ -123,8 +124,12 @@ ubyte[] assemble(SourceLine[] lines, string filename, Target target) {
 	ubyte[] image;
 	final switch (target.os) {
 		case OS.linux: image = elf64.executableImage(bytes, entryOffset); break;
-		case OS.macos: image = macho.executableImage(bytes, entryOffset); break;
+		case OS.macos: image = macho.executableImage(bytes, entryOffset, baseName(filename)); break;
 	}
+	// macOS caches code-signature state per vnode
+	// a signed binary rewritten in place is killed on its next run
+	// the file must be replaced instead
+	if (exists(filename)) remove(filename);
 	File(filename, "wb").rawWrite(image);
 	// make out file executable
 	version (Posix) setAttributes(filename, octal!755);

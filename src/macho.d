@@ -7,6 +7,7 @@ module macho;
 import std.bitmanip : nativeToLittleEndian;
 import std.digest.sha : sha256Of;
 import std.traits : isStaticArray;
+import codesign;
 
 // mach_header_64.magic
 enum MH_MAGIC_64 = 0xfeedfacf;
@@ -198,8 +199,8 @@ uint stringCommandSize(size_t commandSize, string s) {
 }
 
 // Image layout:
-//   __TEXT     [mach_header_64][load commands][room for LC_CODE_SIGNATURE][code]
-//   __LINKEDIT empty until reclang signs its output
+//   __TEXT     [mach_header_64][load commands][code]
+//   __LINKEDIT [code signature]
 // __PAGEZERO maps the low 4 GiB with no access; arm64 requires it.
 enum ulong  pageZeroSize  = 0x100000000;
 enum ulong  textAddress   = pageZeroSize;
@@ -214,8 +215,8 @@ enum uint dylibCommandSize    = stringCommandSize(dylib_command.sizeof, libSyste
 enum uint loadCommandsSize    = 3 * segment_command_64.sizeof + section_64.sizeof
     + symtab_command.sizeof + dysymtab_command.sizeof + dylinkerCommandSize
     + uuid_command.sizeof + build_version_command.sizeof + entry_point_command.sizeof
-    + dylibCommandSize;
-enum ulong codeOffset = mach_header_64.sizeof + loadCommandsSize + linkedit_data_command.sizeof;
+    + dylibCommandSize + linkedit_data_command.sizeof;
+enum ulong codeOffset = mach_header_64.sizeof + loadCommandsSize;
 static assert(codeOffset == 0x260 && codeOffset % 4 == 0);
 
 // Field-wise little-endian serialization, independent of host endianness
@@ -243,11 +244,14 @@ ubyte[] withString(ubyte[] command, string s, uint cmdsize) {
     return command;
 }
 
-// Builds an arm64 macOS executable image from machine code.
-// entryOffset is the offset of the entry point within code.
-ubyte[] executableImage(const(ubyte)[] code, ulong entryOffset) {
+// Builds a signed arm64 macOS executable image from machine code.
+// entryOffset is the offset of the entry point within code, and identifier
+// names the image in its signature.
+ubyte[] executableImage(const(ubyte)[] code, ulong entryOffset, string identifier) {
     ulong textSize = roundUp(codeOffset + code.length, segmentAlign);
-    ulong linkeditSize = 0;
+    // the signature covers every byte before it, so it starts __LINKEDIT
+    uint codeLimit = cast(uint) textSize;
+    uint linkeditSize = codesign.signatureSize(identifier, codeLimit);
     segment_command_64 pageZero = {
         cmd:      LC_SEGMENT_64,
         cmdsize:  segment_command_64.sizeof,
@@ -329,6 +333,12 @@ ubyte[] executableImage(const(ubyte)[] code, ulong entryOffset) {
         current_version:       version1,
         compatibility_version: version1,
     };
+    linkedit_data_command codeSignature = {
+        cmd:      LC_CODE_SIGNATURE,
+        cmdsize:  linkedit_data_command.sizeof,
+        dataoff:  codeLimit,
+        datasize: linkeditSize,
+    };
     ubyte[] commands;
     uint ncmds;
     void add(ubyte[] command) {
@@ -346,6 +356,7 @@ ubyte[] executableImage(const(ubyte)[] code, ulong entryOffset) {
     add(serialize(buildVersion));
     add(serialize(entryPoint));
     add(withString(serialize(libSystem), libSystemPath, dylibCommandSize));
+    add(serialize(codeSignature));
     assert(commands.length == loadCommandsSize);
     mach_header_64 header = {
         magic:      MH_MAGIC_64,
@@ -360,8 +371,10 @@ ubyte[] executableImage(const(ubyte)[] code, ulong entryOffset) {
     ubyte[] image = serialize(header) ~ commands;
     image.length = codeOffset;
     image ~= code;
-    image.length = textSize;
+    image.length = codeLimit;
     // reproducible: the same code gives the same UUID
     image[uuidOffset .. uuidOffset + 16] = sha256Of(image)[0 .. 16];
+    // the header, the UUID included, is hashed: sign the image last
+    image ~= codesign.sign(image, identifier, textSize);
     return image;
 }
