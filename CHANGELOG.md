@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.0.5] - 2026-09-21
+
+Supports two targets now: x86-64 Linux ELF64 and arm64 macOS Mach-O.
+The target defaults to the host, and either host can build for the other.
+
+### Added
+
+- `aarch64-macos` target: arm64 Mach-O executables for Apple Silicon.
+- `-t ARCH-OS` supports two targets, `x86_64-linux` and `aarch64-macos`.
+
+### Changed
+
+- The default output file is `a.out`, was `out.o`.
+- Errors go to stderr, not stdout.
+
 ## [0.0.4] - 2026-09-18
 
 Moved to a new repo, https://github.com/reclang/rec,
