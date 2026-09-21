@@ -76,10 +76,11 @@ tmp=$(mktemp) || exit 2
 bin=$(mktemp) || exit 2
 cross=$(mktemp) || exit 2
 elf=$(mktemp) || exit 2
+elfarm=$(mktemp) || exit 2
 # two directories, for the same output name built for two targets
 dir1=$(mktemp -d) || exit 2
 dir2=$(mktemp -d) || exit 2
-trap 'rm -rf "$tmp" "$bin" "$cross" "$elf" "$dir1" "$dir2"' EXIT
+trap 'rm -rf "$tmp" "$bin" "$cross" "$elf" "$elfarm" "$dir1" "$dir2"' EXIT
 
 # ---------------------------------------------------------
 # Add a check by calling ok/bad with a one-line description
@@ -200,6 +201,37 @@ check_hex "x86_64-linux min-1 entry is 0x400078" "$elf" 24 7800400000000000
 # str0 sits 64 bytes into the code, so it loads 0x400078 + 0x40 = 0x4000b8
 check_hex "x86_64-linux min-1 code" "$elf" 120 \
 48b8010000000000000048bf010000000000000048beb80040000000000048ba0e000000000000000f0548b83c0000000000000048bf2a000000000000000f0548656c6c6f2c20776f726c64210a
+
+# -t aarch64-linux writes an ELF64 executable on any host, so like the
+# x86-64 checks above its bytes are checked everywhere, and it runs where it can
+"$reclang" -t aarch64-linux -o "$elfarm" "$root/test/min-1.rec" > /dev/null 2>&1
+status=$?
+if [ "$status" -eq 0 ]; then
+    ok "reclang -t aarch64-linux compiles test/min-1.rec"
+else
+    bad "reclang -t aarch64-linux compiles test/min-1.rec" "exit status $status"
+fi
+
+check_hex "aarch64-linux min-1 is EM_AARCH64" "$elfarm" 18 b700
+check_hex "aarch64-linux min-1 entry is 0x400078" "$elfarm" 24 7800400000000000
+# aarch64 loads on 64 KiB boundaries; p_align is the last Phdr field, at 64 + 48
+check_hex "aarch64-linux min-1 segment align is 0x10000" "$elfarm" 112 0000010000000000
+# code at 120: mov x8, 64; mov x0, 1; adr x1, str0; mov x2, 14; svc 0;
+# mov x8, 93; mov x0, 42; svc 0; str0: "Hello, world!", 10
+check_hex "aarch64-linux min-1 code" "$elfarm" 120 \
+080880d2200080d2c1000010c20180d2010000d4a80b80d2400580d2010000d448656c6c6f2c20776f726c64210a
+
+if [ "$host" = aarch64-linux ]; then
+    "$elfarm" > "$tmp" 2>&1
+    status=$?
+    if [ "$status" -eq 42 ] && printf 'Hello, world!\n' | cmp -s - "$tmp"; then
+        ok "aarch64-linux min-1 runs"
+    else
+        bad "aarch64-linux min-1 runs" "exit status $status, output '$(cat "$tmp")'"
+    fi
+else
+    skipped "aarch64-linux min-1 runs" "$host cannot run aarch64-linux output"
+fi
 
 # -t aarch64-macos writes a signed Mach-O executable on any host; its bytes
 # are checked everywhere, and it runs where it can
