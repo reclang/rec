@@ -1,11 +1,21 @@
 # Recreational Programming Language
 
 > Hey, this is a project in a very early stage of development.
-> Right now, reclang 0.0.3 compiles a small subset of the language
+> Right now, reclang 0.0.5 compiles a small subset of the language
 > (exactly three functions: `main`, `writeln`, `exit`)
-> to an x86-64 Linux ELF64 executable. It prints its tokens, AST and
-> generated assembly to stdout as it goes. The language itself is not
-> documented yet, but I'm working on that.
+> to an x86-64 Linux ELF64 or an arm64 macOS Mach-O executable.
+> It prints its tokens, AST and generated assembly to stdout as it goes.
+> The language itself is not documented yet, but I'm working on that.
+
+## Usage
+
+The compiler supports two targets now: `x86_64-linux` and `aarch64-macos`.
+Either host builds for either system:
+
+```sh
+reclang -o hello hello.rec                    # for this system
+reclang -t aarch64-macos -o hello hello.rec   # for an Apple Silicon Mac
+```
 
 ## Install
 
@@ -45,7 +55,8 @@ Ubuntu 22.04, Debian 12 and anything newer. Elsewhere, build from source.
 ### From source
 
 Needs ldc 1.36 or newer (D 2.106); dmd 2.106 also works, gdc is not tested.
-Run `make`, `make check` and `make install` as below.
+On macOS, `brew install ldc`. Run `make`, `make check` and `make install`
+as below. The compiler itself builds and runs on both Linux and macOS.
 
 ### How to build
 
