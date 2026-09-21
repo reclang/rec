@@ -45,6 +45,7 @@ struct Target {
 // supported ARCH-OS combinations
 Target[] supportedTargets = [
     Target(Arch.x86_64, OS.linux),
+    Target(Arch.aarch64, OS.linux),
     Target(Arch.aarch64, OS.macos),
 ];
 
