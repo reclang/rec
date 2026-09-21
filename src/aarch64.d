@@ -48,6 +48,8 @@ ubyte[] encode(Instruction instruction, Label[string] labels) {
         // ADR Xd, label
         case "adr":
             long imm = long(label(operands[1], labels).offset) - long(instruction.offset);
+            // should be within 1M
+            if (imm < -(1 << 20) || imm >= (1 << 20)) throw error(operands[1], "adr target out of range: " ~ operands[1].text);
             word = 0x10000000 | cast(uint)((imm & 3) << 29) | cast(uint)(((imm >> 2) & 0x7ffff) << 5) | register(operands[0]);
             break;
         // SVC #imm16
