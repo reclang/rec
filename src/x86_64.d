@@ -12,6 +12,11 @@ int[string] registers = [
     "r8":  8, "r9":  9, "r10": 10, "r11": 11, "r12": 12, "r13": 13, "r14": 14, "r15": 15
 ];
 
+int register(Token operand) {
+    if (operand.text in registers) return registers[operand.text];
+    throw error(operand, "unknown register " ~ operand.text);
+}
+
 long value(Token operand, Label[string] labels) {
     if (operand.kind == TokenKind.constant) return number(operand);
     return label(operand, labels).address;
@@ -30,7 +35,7 @@ ubyte[] encode(Instruction instruction, Label[string] labels) {
         case "syscall": return [0x0f, 0x05];
         // REX.W + B8+ rd io
         case "mov":
-            int reg = registers[instruction.operands[0].text];
+            int reg = register(instruction.operands[0]);
             long imm = value(instruction.operands[1], labels);
             ubyte[] code = [
                 cast(ubyte)(0x48 | (reg >= 8 ? 1 : 0)),

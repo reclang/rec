@@ -15,6 +15,11 @@ int[string] registers = [
     "x24": 24, "x25": 25, "x26": 26, "x27": 27, "x28": 28, "x29": 29, "x30": 30
 ];
 
+int register(Token operand) {
+    if (operand.text in registers) return registers[operand.text];
+    throw error(operand, "unknown register " ~ operand.text);
+}
+
 uint imm16(Token operand) {
     long imm = number(operand);
     if (imm < 0 || imm > 0xffff) throw error(operand, "immediate out of range 0..65535: " ~ operand.text);
@@ -38,12 +43,12 @@ ubyte[] encode(Instruction instruction, Label[string] labels) {
     switch (instruction.mnemonic.text) {
         // MOVZ Xd, #imm16
         case "mov":
-            word = 0xd2800000 | (imm16(operands[1]) << 5) | registers[operands[0].text];
+            word = 0xd2800000 | (imm16(operands[1]) << 5) | register(operands[0]);
             break;
         // ADR Xd, label
         case "adr":
             long imm = long(label(operands[1], labels).offset) - long(instruction.offset);
-            word = 0x10000000 | cast(uint)((imm & 3) << 29) | cast(uint)(((imm >> 2) & 0x7ffff) << 5) | registers[operands[0].text];
+            word = 0x10000000 | cast(uint)((imm & 3) << 29) | cast(uint)(((imm >> 2) & 0x7ffff) << 5) | register(operands[0]);
             break;
         // SVC #imm16
         case "svc":
