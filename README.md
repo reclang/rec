@@ -37,11 +37,12 @@ To uninstall, remove `PREFIX/bin/reclang` and `PREFIX/share/man/man1/reclang.1`.
 ### By hand from GitHub Releases
 
 Prebuilt binaries live at
-<https://github.com/reclang/rec/releases>.
-Download `reclang-X.Y.Z-linux-x86_64.tar.gz` and `SHA256SUMS`, then:
+<https://github.com/reclang/rec/releases>. Download the tarball for your
+system, `reclang-X.Y.Z-linux-x86_64.tar.gz` or
+`reclang-X.Y.Z-macos-arm64.tar.gz`, and `SHA256SUMS`, then:
 
 ```sh
-sha256sum -c --ignore-missing SHA256SUMS
+sha256sum -c --ignore-missing SHA256SUMS     # macOS: shasum -a 256 -c ...
 tar -xzf reclang-X.Y.Z-linux-x86_64.tar.gz
 ```
 
@@ -49,8 +50,14 @@ The tarball contains `reclang`, `reclang.1` and `LICENSE`.
 Put the binary somewhere on your `PATH` and the page on your manpath,
 for example `~/.local/bin` and `~/.local/share/man/man1`.
 
-Prebuilt binaries are Linux x86-64 only today and need glibc 2.34 or newer:
-Ubuntu 22.04, Debian 12 and anything newer. Elsewhere, build from source.
+- The Linux binary needs glibc 2.34 or newer: Ubuntu 22.04, Debian 12 and
+anything newer.
+- The macOS binary is for Apple Silicon, macOS 12 or newer. The build is
+ad-hoc signed rather than notarised; use the `curl` command above to download
+and install, since browsers marks its tarball as quarantined and macOS
+refuses to run the binary.
+To clear it by hand, run `xattr -dr com.apple.quarantine reclang`.
+- MacOS on Intel Macs: build from source.
 
 ### From source
 
