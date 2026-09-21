@@ -5,7 +5,11 @@
 #   reclang-X.Y.Z-linux-x86_64.tar.gz   reclang, reclang.1, LICENSE in one
 #                                       directory; D runtime linked in,
 #                                       needs glibc 2.35 (Ubuntu 22.04) or newer
-#   SHA256SUMS                          sha256sum of both; install.sh reads it
+#   reclang-X.Y.Z-macos-arm64.tar.gz    the same three files for Apple Silicon,
+#                                       ad-hoc signed by the linker, macOS 12
+#                                       or newer
+#   SHA256SUMS                          sha256sum of the tarballs; install.sh
+#                                       reads it
 #
 # The tag must be the version value fron the VERSION file with a v in front,
 # i.e., "1.0.0" in the VERSION file and "v1.0.0" tag;
@@ -107,9 +111,65 @@ jobs:
           path: reclang-${{ env.VERSION }}-${{ env.TARGET }}.tar.gz
           if-no-files-found: error
 
+  macos-arm64:
+    name: build macos-arm64
+    needs: version
+    runs-on: macos-latest
+    # The runner is Apple Silicon and "container:" does not exist on macOS, so
+    # the job runs on the VM and takes ldc from setup-dlang, the same version
+    # the Linux job unpacks. The asset is named macos-arm64, not
+    # macos-aarch64: install.sh builds the platform string from `uname -m`,
+    # which prints arm64 here, while the compiler spells the target
+    # aarch64-macos. MACOSX_DEPLOYMENT_TARGET is pinned, or the binary carries
+    # whatever SDK minimum the runner image ships and refuses to start on
+    # older macOS.
+    env:
+      VERSION: ${{ needs.version.outputs.version }}
+      TARGET: macos-arm64
+      MACOSX_DEPLOYMENT_TARGET: '12.0'
+    steps:
+      - uses: actions/checkout@v5
+      - uses: dlang-community/setup-dlang@v2
+        with:
+          compiler: ldc-${{ env.LDC_VERSION }}
+      - name: Compiler
+        run: $DC --version
+      - name: Build
+        run: make DFLAGS="-O -release -link-defaultlib-shared=false"
+      - name: Check
+        run: make check
+      - name: Inspect linking
+        run: |
+          otool -L reclang
+          if otool -L reclang | grep -Eq 'phobos|druntime'; then
+            echo "::error::the D runtime is linked dynamically"
+            exit 1
+          fi
+          # libSystem is always dynamic: macOS ships no static libc
+          otool -l reclang | grep -A 4 -m 1 LC_BUILD_VERSION || true
+          # the linker ad-hoc signs arm64 binaries; without a valid signature
+          # macOS kills them on launch, so the shipped file is checked here
+          codesign --verify --strict --verbose=2 reclang
+      - name: Pack
+        # bsdtar, not GNU tar: different flags for the same normalisation.
+        # COPYFILE_DISABLE keeps it from adding ._ AppleDouble entries.
+        env:
+          COPYFILE_DISABLE: '1'
+        run: |
+          dir=reclang-$VERSION-$TARGET
+          mkdir "$dir"
+          cp reclang doc/reclang.1 LICENSE "$dir"
+          tar --uid 0 --gid 0 --uname '' --gname '' -czf "$dir.tar.gz" "$dir"
+          tar -tzvf "$dir.tar.gz"
+      - uses: actions/upload-artifact@v5
+        with:
+          name: ${{ env.TARGET }}
+          path: reclang-${{ env.VERSION }}-${{ env.TARGET }}.tar.gz
+          if-no-files-found: error
+
   release:
     name: publish
-    needs: [version, linux-x86_64]
+    needs: [version, linux-x86_64, macos-arm64]
     runs-on: ubuntu-latest
     env:
       VERSION: ${{ needs.version.outputs.version }}
