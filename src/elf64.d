@@ -32,6 +32,7 @@ enum ET_EXEC = 2;           // executable file
 
 // e_machine
 enum EM_X86_64 = 62;        // AMD x86-64
+enum EM_AARCH64 = 183;      // ARM AArch64
 
 // p_type
 enum PT_LOAD = 1;           // loadable segment
@@ -78,7 +79,9 @@ static assert(Elf64_Phdr.sizeof == 56);
 enum Elf64_Addr  loadAddress = 0x400000;
 enum Elf64_Off   codeOffset  = Elf64_Ehdr.sizeof + Elf64_Phdr.sizeof;
 enum Elf64_Addr  codeAddress = loadAddress + codeOffset;
-enum Elf64_Xword pageSize    = 0x1000;
+// PT_LOAD alignment: 4 KiB pages on x86-64, 64 KiB on aarch64
+enum Elf64_Xword segmentAlignX86_64  = 0x1000;
+enum Elf64_Xword segmentAlignAArch64 = 0x10000;
 static assert(codeOffset == 0x78);
 
 // Field-wise little-endian serialization, independent of host endianness
@@ -94,13 +97,13 @@ ubyte[] serialize(T)(auto ref const T header) if (is(T == struct)) {
 
 // Builds a static executable image from machine code.
 // entryOffset is the offset of the entry point within code.
-ubyte[] executableImage(const(ubyte)[] code, ulong entryOffset) {
+ubyte[] executableImage(const(ubyte)[] code, ulong entryOffset, Elf64_Half machine, Elf64_Xword segmentAlign) {
     Elf64_Ehdr ehdr = {
         e_ident: [0x7f, 'E', 'L', 'F',
                   ELFCLASS64, ELFDATA2LSB, EV_CURRENT, ELFOSABI_SYSV,
                   0, 0, 0, 0, 0, 0, 0, 0],
         e_type:      ET_EXEC,
-        e_machine:   EM_X86_64,
+        e_machine:   machine,
         e_version:   EV_CURRENT,
         e_entry:     codeAddress + entryOffset,
         e_phoff:     Elf64_Ehdr.sizeof,
@@ -121,7 +124,7 @@ ubyte[] executableImage(const(ubyte)[] code, ulong entryOffset) {
         p_paddr:  loadAddress,
         p_filesz: codeOffset + code.length,
         p_memsz:  codeOffset + code.length,
-        p_align:  pageSize,
+        p_align:  segmentAlign,
     };
     ubyte[] image = serialize(ehdr);
     image ~= serialize(phdr);
