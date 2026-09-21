@@ -5,6 +5,7 @@
 #   floor    ldc 1.36 from Ubuntu 24.04, the minimum supported version
 #   void     ldc from Void
 #   latest   current ldc and dmd through setup-dlang, and ldc on macOS
+#            and arm64 Linux
 #
 # Every job runs make, make check and make install into a DESTDIR, and
 # checks that exactly the binary and the man page were installed.
@@ -85,6 +86,7 @@ jobs:
           - { os: ubuntu-latest, compiler: ldc-latest }
           - { os: ubuntu-latest, compiler: dmd-latest }
           - { os: macos-latest, compiler: ldc-latest }
+          - { os: ubuntu-24.04-arm, compiler: ldc-latest }
     steps:
       - uses: actions/checkout@v5
       # sets DC to the compiler it installed, which the Makefile picks up
