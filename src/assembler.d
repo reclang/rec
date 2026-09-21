@@ -130,7 +130,12 @@ ubyte[] assemble(SourceLine[] lines, string filename, Target target) {
 	else stderr.writefln("warning: entry label '%s' not found, using code offset 0", entryLabel);
 	ubyte[] image;
 	final switch (target.os) {
-		case OS.linux: image = elf64.executableImage(bytes, entryOffset); break;
+		case OS.linux:
+			final switch (target.arch) {
+				case Arch.x86_64:  image = elf64.executableImage(bytes, entryOffset, elf64.EM_X86_64, elf64.segmentAlignX86_64); break;
+				case Arch.aarch64: image = elf64.executableImage(bytes, entryOffset, elf64.EM_AARCH64, elf64.segmentAlignAArch64); break;
+			}
+			break;
 		case OS.macos: image = macho.executableImage(bytes, entryOffset, baseName(filename)); break;
 	}
 	// macOS caches code-signature state per vnode

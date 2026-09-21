@@ -19,7 +19,7 @@ SyscallConvention syscallConvention(Target target) {
 		case OS.linux:
 			final switch (target.arch) {
 				case Arch.x86_64: return SyscallConvention("rax", ["rdi", "rsi", "rdx"], "syscall", 1, 60, "mov");
-				case Arch.aarch64: break;
+				case Arch.aarch64: return SyscallConvention("x8", ["x0", "x1", "x2"], "svc\t0", 64, 93, "adr");
 			}
 			break;
 		case OS.macos:
