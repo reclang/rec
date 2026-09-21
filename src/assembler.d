@@ -117,7 +117,14 @@ ubyte[] assemble(SourceLine[] lines, string filename, Target target) {
 	}
 	// second pass: encode with all labels known
 	ubyte[] bytes;
-	foreach (instruction; instructions) bytes ~= instruction.encode(labels, target.arch);
+	foreach (instruction; instructions) {
+		ubyte[] code = instruction.encode(labels, target.arch);
+		if (code.length != instruction.size) {
+			throw error(instruction.mnemonic, format("%s encoded to %d bytes, sized %d",
+				instruction.mnemonic.text, code.length, instruction.size));
+		}
+		bytes ~= code;
+	}
 	ulong entryOffset;
 	if (Label *label = entryLabel in labels) entryOffset = label.offset;
 	else stderr.writefln("warning: entry label '%s' not found, using code offset 0", entryLabel);
