@@ -3,17 +3,23 @@
 > Hey, this is a project in a very early stage of development.
 > Right now, reclang 0.0.5 compiles a small subset of the language
 > (exactly three functions: `main`, `writeln`, `exit`)
-> to an x86-64 Linux ELF64 or an arm64 macOS Mach-O executable.
+> to an x86-64 or arm64 Linux ELF64, or an arm64 macOS Mach-O executable.
 > It prints its tokens, AST and generated assembly to stdout as it goes.
 > The language itself is not documented yet, but I'm working on that.
 
 ## Usage
 
-The compiler supports two targets now: `x86_64-linux` and `aarch64-macos`.
-Either host builds for either system:
+The compiler supports three targets now: 
+
+- `x86_64-linux`
+- `aarch64-linux`
+- `aarch64-macos`.
+
+Any host builds for any of them:
 
 ```sh
-reclang -o hello hello.rec                    # for this system
+reclang -o hello hello.rec                    # for current system
+reclang -t aarch64-linux -o hello hello.rec   # for an arm64 Linux box
 reclang -t aarch64-macos -o hello hello.rec   # for an Apple Silicon Mac
 ```
 
@@ -38,8 +44,7 @@ To uninstall, remove `PREFIX/bin/reclang` and `PREFIX/share/man/man1/reclang.1`.
 
 Prebuilt binaries live at
 <https://github.com/reclang/rec/releases>. Download the tarball for your
-system, `reclang-X.Y.Z-linux-x86_64.tar.gz` or
-`reclang-X.Y.Z-macos-arm64.tar.gz`, and `SHA256SUMS`, then:
+system and `SHA256SUMS`, then:
 
 ```sh
 sha256sum -c --ignore-missing SHA256SUMS     # macOS: shasum -a 256 -c ...
@@ -50,7 +55,7 @@ The tarball contains `reclang`, `reclang.1` and `LICENSE`.
 Put the binary somewhere on your `PATH` and the page on your manpath,
 for example `~/.local/bin` and `~/.local/share/man/man1`.
 
-- The Linux binary needs glibc 2.34 or newer: Ubuntu 22.04, Debian 12 and
+- The Linux binaries need glibc 2.34 or newer: Ubuntu 22.04, Debian 12 and
 anything newer.
 - The macOS binary is for Apple Silicon, macOS 12 or newer. The build is
 ad-hoc signed rather than notarised; use the `curl` command above to download
