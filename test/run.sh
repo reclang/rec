@@ -75,10 +75,11 @@ check_hex() {
 tmp=$(mktemp) || exit 2
 bin=$(mktemp) || exit 2
 cross=$(mktemp) || exit 2
+elf=$(mktemp) || exit 2
 # two directories, for the same output name built for two targets
 dir1=$(mktemp -d) || exit 2
 dir2=$(mktemp -d) || exit 2
-trap 'rm -rf "$tmp" "$bin" "$cross" "$dir1" "$dir2"' EXIT
+trap 'rm -rf "$tmp" "$bin" "$cross" "$elf" "$dir1" "$dir2"' EXIT
 
 # ---------------------------------------------------------
 # Add a check by calling ok/bad with a one-line description
@@ -181,6 +182,24 @@ if [ "$host" = x86_64-linux ] && command -v readelf > /dev/null 2>&1; then
         bad "readelf -h -l accepts min-1" "$(head -n 1 "$tmp")"
     fi
 fi
+
+# -t x86_64-linux writes an ELF64 executable on any host, so unlike the
+# readelf check above these bytes are checked everywhere, the Mac included
+"$reclang" -t x86_64-linux -o "$elf" "$root/test/min-1.rec" > /dev/null 2>&1
+status=$?
+if [ "$status" -eq 0 ]; then
+    ok "reclang -t x86_64-linux compiles test/min-1.rec"
+else
+    bad "reclang -t x86_64-linux compiles test/min-1.rec" "exit status $status"
+fi
+
+check_hex "x86_64-linux min-1 is EM_X86_64" "$elf" 18 3e00
+check_hex "x86_64-linux min-1 entry is 0x400078" "$elf" 24 7800400000000000
+# code at 120: mov rax, 1; mov rdi, 1; mov rsi, str0; mov rdx, 14; syscall;
+# mov rax, 60; mov rdi, 42; syscall; str0: "Hello, world!", 10
+# str0 sits 64 bytes into the code, so it loads 0x400078 + 0x40 = 0x4000b8
+check_hex "x86_64-linux min-1 code" "$elf" 120 \
+48b8010000000000000048bf010000000000000048beb80040000000000048ba0e000000000000000f0548b83c0000000000000048bf2a000000000000000f0548656c6c6f2c20776f726c64210a
 
 # -t aarch64-macos writes a signed Mach-O executable on any host; its bytes
 # are checked everywhere, and it runs where it can
