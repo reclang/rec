@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.0.6] - 2026-09-21
+
+Added Aarch64 output for ELF64 files, so the compiler supports three
+targets now: x86-64 and arm64 Linux ELF64 and arm64 macOS Mach-O.
+
+### Added
+
+- `aarch64-linux` target: arm64 ELF64 executables for Linux on ARM.
+- `-t ARCH-OS` supports three targets:
+  - `x86_64-linux`
+  - `aarch64-linux`
+  - `aarch64-macos`
+
 ## [0.0.5] - 2026-09-21
 
 Supports two targets now: x86-64 Linux ELF64 and arm64 macOS Mach-O.
