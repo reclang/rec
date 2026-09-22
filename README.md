@@ -1,7 +1,7 @@
 # Recreational Programming Language
 
 > Hey, this is a project in a very early stage of development.
-> Right now, reclang 0.0.5 compiles a small subset of the language
+> Right now, reclang 0.0.7 compiles a small subset of the language
 > (exactly three functions: `main`, `writeln`, `exit`)
 > to an x86-64 or arm64 Linux ELF64, or an arm64 macOS Mach-O executable.
 > It prints its tokens, AST and generated assembly to stdout as it goes.
@@ -39,6 +39,28 @@ The script never calls `sudo` itself and never writes outside the prefix,
 and prints a `PATH` or `MANPATH` line if one is needed.
 
 To uninstall, remove `PREFIX/bin/reclang` and `PREFIX/share/man/man1/reclang.1`.
+
+### With Homebrew
+
+```sh
+brew install reclang/rec/reclang
+```
+
+That taps `reclang/rec` and trusts this one formula. To trust the whole tap
+and use the short name:
+
+```sh
+brew tap reclang/rec
+brew trust reclang/rec
+brew install reclang
+```
+
+That allows Homebrew to load every current and future formula, cask and external command from that tap.
+
+In either case, run `brew upgrade reclang` to upgrade.
+
+The formula builds from source with ldc, which Homebrew installs for the
+build together with LLVM.
 
 ### By hand from GitHub Releases
 

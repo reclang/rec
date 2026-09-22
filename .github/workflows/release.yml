@@ -13,6 +13,11 @@
 #   SHA256SUMS                          sha256sum of the tarballs; install.sh
 #                                       reads it
 #
+# Once the release exists, the tap job rewrites Formula/reclang.rb in
+# reclang/homebrew-rec from packaging/homebrew/reclang.rb and pushes it with
+# the HOMEBREW_TAP_DEPLOY_KEY secret, so `brew upgrade reclang` sees the
+# new version.
+#
 # The tag must be the version value fron the VERSION file with a v in front,
 # i.e., "1.0.0" in the VERSION file and "v1.0.0" tag;
 # body becomes the release notes, without the changelog heading, which the
@@ -262,3 +267,45 @@ jobs:
           fi
           gh release create "v$VERSION" --verify-tag --title "Rec $VERSION" \
             --notes-file notes.md dist/*
+
+  tap:
+    name: bump the Homebrew tap
+    needs: [version, release]
+    if: github.actor != 'nektos/act'    # no secret and no release under act
+    runs-on: ubuntu-latest
+    env:
+      VERSION: ${{ needs.version.outputs.version }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          path: rec
+      - uses: actions/checkout@v5
+        with:
+          repository: reclang/homebrew-rec
+          ssh-key: ${{ secrets.HOMEBREW_TAP_DEPLOY_KEY }}
+          path: tap
+      # packaging/homebrew/reclang.rb is the template; url and sha256 come
+      # from the release the publish job just created, which also proves
+      # the asset is live
+      - name: Formula for this release
+        run: |
+          sha=$(gh release download "v$VERSION" --repo "$GITHUB_REPOSITORY" \
+                  --pattern SHA256SUMS --output - \
+                | awk -v f="reclang-$VERSION.tar.gz" '$2 == f { print $1 }')
+          if [ -z "$sha" ]; then
+            echo "::error::no checksum for reclang-$VERSION.tar.gz in SHA256SUMS"
+            exit 1
+          fi
+          sed -e "s|/download/v[0-9.]*/reclang-[0-9.]*\.tar\.gz|/download/v$VERSION/reclang-$VERSION.tar.gz|" \
+              -e "s|^  sha256 \"[0-9a-f]*\"|  sha256 \"$sha\"|" \
+              rec/packaging/homebrew/reclang.rb > tap/Formula/reclang.rb
+          grep -c "v$VERSION/reclang-$VERSION.tar.gz\|$sha" tap/Formula/reclang.rb | grep -qx 2
+      - name: Push
+        run: |
+          cd tap
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add Formula/reclang.rb
+          git commit -m "reclang $VERSION"
+          git push
