@@ -1,5 +1,9 @@
 # Changelog
 
+## [0.0.7] - 2026-09-22
+
+Homebrew tap: `brew install reclang/rec/reclang` on macOS and Linux.
+
 ## [0.0.6] - 2026-09-21
 
 Added Aarch64 output for ELF64 files, so the compiler supports three
