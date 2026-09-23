@@ -5,6 +5,11 @@ class Reclang < Formula
   sha256 "e5b8acea45f72984835b6e5508e7538658d9e256ade58843ad70d612540d2b30"
   license "Apache-2.0" => { with: "LLVM-exception" }
 
+  livecheck do
+    url :stable
+    strategy :github_latest
+  end
+
   depends_on "ldc" => :build
 
   def install

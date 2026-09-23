@@ -280,10 +280,13 @@ jobs:
       - uses: actions/checkout@v5
         with:
           path: rec
+      # HOMEBREW_TAP_TOKEN is a fine-grained token for the tap only; a pull
+      # request opened with it, unlike one opened with a GITHUB_TOKEN,
+      # triggers brew test-bot there
       - uses: actions/checkout@v5
         with:
           repository: reclang/homebrew-rec
-          ssh-key: ${{ secrets.HOMEBREW_TAP_DEPLOY_KEY }}
+          token: ${{ secrets.HOMEBREW_TAP_TOKEN }}
           path: tap
       # packaging/homebrew/reclang.rb is the template; url and sha256 come
       # from the release the publish job just created, which also proves
@@ -301,11 +304,19 @@ jobs:
               -e "s|^  sha256 \"[0-9a-f]*\"|  sha256 \"$sha\"|" \
               rec/packaging/homebrew/reclang.rb > tap/Formula/reclang.rb
           grep -c "v$VERSION/reclang-$VERSION.tar.gz\|$sha" tap/Formula/reclang.rb | grep -qx 2
-      - name: Push
+      # brew test-bot bottles the pull request; running the tap's publish
+      # workflow with its number uploads the bottles and merges it
+      - name: Pull request
+        env:
+          GH_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
         run: |
           cd tap
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git switch -c "reclang-$VERSION"
           git add Formula/reclang.rb
           git commit -m "reclang $VERSION"
-          git push
+          git push origin "reclang-$VERSION"
+          gh pr create --repo reclang/homebrew-rec --base main \
+            --head "reclang-$VERSION" --title "reclang $VERSION" \
+            --body "Release: https://github.com/$GITHUB_REPOSITORY/releases/tag/v$VERSION"
