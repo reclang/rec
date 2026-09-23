@@ -44,7 +44,7 @@ int main(string[] args) {
 	writeln(arguments);
 	Node program = new Node(NodeKind.program, "Program");
 	foreach(filename; arguments.filenames) {
-		SourceLine[] lines = preprocess(filename);
+		SourceLine[] lines = preprocess(filename, arguments.include);
 		foreach (l; lines) writefln("%s/%s:%d: %s", l.path, l.filename, l.num, l.text);
 		Token[] tokens = tokenize(lines);
 		foreach(t; tokens) writefln("%s/%s %d:%d: %s", t.path, t.filename, t.line, t.pos + 1, t.text);

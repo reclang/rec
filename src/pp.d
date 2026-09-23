@@ -122,7 +122,7 @@ void include(ref SourceLine[] lines, Param[] params, string path, string include
 		if (found is null) throw new Exception(format("%s: cannot find include file %s", where, param.name));
 		if (chain.canFind(found))
 			throw new Exception(format("%s: include loop: %s", where, (chain ~ found).join(" -> ")));
-		lines ~= preprocess(found, chain);
+		lines ~= preprocess(found, includes, chain);
 	}
 }
 
@@ -171,11 +171,11 @@ unittest {
 
 // -- Preprocessor --
 
-SourceLine[] preprocess(string filename) {
-	return preprocess(filename, null);
+SourceLine[] preprocess(string filename, string includePath = null) {
+	return preprocess(filename, includePath, null);
 }
 
-private SourceLine[] preprocess(string filename, string[] chain) {
+private SourceLine[] preprocess(string filename, string includePath, string[] chain) {
 	SourceLine[] lines;
 	string fullPath = buildNormalizedPath(absolutePath(filename));
 	string name = baseName(fullPath);
@@ -199,7 +199,7 @@ private SourceLine[] preprocess(string filename, string[] chain) {
 		if (hasDirective) {
 			Directive directive = parseDirective(source[text_start .. end]);
 			switch (directive.name) {
-				case "include": include(lines, directive.params, path, path, format("%s:%d", name, num), chain); break; // should be a -i path if available
+				case "include": include(lines, directive.params, path, includePath, format("%s:%d", name, num), chain); break;
 				default: 
 				if (directive.name.length > 0 && directive.name[0] == '!') {
 					// skip
