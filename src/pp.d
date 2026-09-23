@@ -113,13 +113,16 @@ unittest {
 // -- Directives --
 
 // where is "file:line" of the directive, for error messages
-void include(ref SourceLine[] lines, Param[] params, string path, string includes, string where) {
+// chain is the absolute paths of the inculded files
+void include(ref SourceLine[] lines, Param[] params, string path, string includes, string where, string[] chain) {
 	if (params.length == 0) throw new Exception(where ~ ": #include needs a filename");
 	foreach (param; params) {
 		if (param.name.length == 0) throw new Exception(where ~ ": empty filename in #include");
 		string found = findInclude(param.name, path, includes);
 		if (found is null) throw new Exception(format("%s: cannot find include file %s", where, param.name));
-		lines ~= preprocess(found);
+		if (chain.canFind(found))
+			throw new Exception(format("%s: include loop: %s", where, (chain ~ found).join(" -> ")));
+		lines ~= preprocess(found, chain);
 	}
 }
 
@@ -135,17 +138,49 @@ string findInclude(string filename, string sourcePath, string includePath) {
 	return null;
 }
 
-// isFile throws on a missing path, so check exists first
 bool isExistingFile(string path) {
 	return exists(path) && isFile(path);
+}
+
+// Tests for include loops
+unittest {
+	import std.exception : collectExceptionMsg;
+	import std.file : mkdirRecurse, rmdirRecurse, tempDir, write;
+	import std.path : buildPath;
+	import std.process : thisProcessID;
+
+	string dir = buildPath(tempDir, format("reclang-pp-test-%d", thisProcessID));
+	mkdirRecurse(buildPath(dir, "sub"));
+	scope (exit) rmdirRecurse(dir);
+
+	// a file including itself
+	write(buildPath(dir, "self.asm"), "s1\n#include self.asm\n");
+	assert(collectExceptionMsg(preprocess(buildPath(dir, "self.asm"))).canFind("self.asm:2: include loop"));
+
+	// a -> sub/b -> a, with the path back to a going through ..
+	write(buildPath(dir, "a.asm"), "a1\n#include \"sub/b.asm\"\n");
+	write(buildPath(dir, "sub", "b.asm"), "b1\n#include ../a.asm\n");
+	assert(collectExceptionMsg(preprocess(buildPath(dir, "a.asm"))).canFind("b.asm:2: include loop"));
+
+	// the same file included twice without a loop is fine
+	write(buildPath(dir, "defs.asm"), "d1\n");
+	write(buildPath(dir, "c.asm"), "#include defs.asm\n");
+	write(buildPath(dir, "main.asm"), "#include defs.asm\n#include c.asm\nm3\n");
+	assert(preprocess(buildPath(dir, "main.asm")).map!(l => l.text).array == ["d1", "d1", "m3"]);
 }
 
 // -- Preprocessor --
 
 SourceLine[] preprocess(string filename) {
+	return preprocess(filename, null);
+}
+
+private SourceLine[] preprocess(string filename, string[] chain) {
 	SourceLine[] lines;
-	string name = baseName(filename);
-	string path = dirName(buildNormalizedPath(absolutePath(filename)));
+	string fullPath = buildNormalizedPath(absolutePath(filename));
+	string name = baseName(fullPath);
+	string path = dirName(fullPath);
+	chain ~= fullPath;
 	// every SourceLine.text is a slice into this buffer
 	string source = readText(filename);
 	uint num = 1;
@@ -164,7 +199,7 @@ SourceLine[] preprocess(string filename) {
 		if (hasDirective) {
 			Directive directive = parseDirective(source[text_start .. end]);
 			switch (directive.name) {
-				case "include": include(lines, directive.params, path, path, format("%s:%d", name, num)); break; // should be a -i path if available
+				case "include": include(lines, directive.params, path, path, format("%s:%d", name, num), chain); break; // should be a -i path if available
 				default: 
 				if (directive.name.length > 0 && directive.name[0] == '!') {
 					// skip
