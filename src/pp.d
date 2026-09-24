@@ -129,7 +129,7 @@ void include(ref SourceLine[] lines, Param[] params, string path, string include
 // an absolute filename is used as is, a relative one is looked up
 // next to the including file first, then in the include path
 string findInclude(string filename, string sourcePath, string includePath) {
-	if (isAbsolute(filename)) return isExistingFile(filename) ? filename : null;
+	if (isAbsolute(filename)) return isExistingFile(filename) ? buildNormalizedPath(filename) : null;
 	foreach (dir; [sourcePath, includePath]) {
 		if (dir.length == 0) continue;
 		string candidate = buildNormalizedPath(dir, filename);
@@ -161,6 +161,10 @@ unittest {
 	write(buildPath(dir, "a.asm"), "a1\n#include \"sub/b.asm\"\n");
 	write(buildPath(dir, "sub", "b.asm"), "b1\n#include ../a.asm\n");
 	assert(collectExceptionMsg(preprocess(buildPath(dir, "a.asm"))).canFind("b.asm:2: include loop"));
+
+	// an absolute path back to the same file, through ..
+	write(buildPath(dir, "abs.asm"), "x1\n#include \"" ~ buildPath(dir, "sub", "..", "abs.asm") ~ "\"\n");
+	assert(collectExceptionMsg(preprocess(buildPath(dir, "abs.asm"))).canFind("abs.asm:2: include loop"));
 
 	// the same file included twice without a loop is fine
 	write(buildPath(dir, "defs.asm"), "d1\n");
