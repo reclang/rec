@@ -5,7 +5,6 @@ import std.path : absolutePath, buildNormalizedPath, baseName, dirName, isAbsolu
 
 import std.string;
 import std.ascii : isWhite;
-import std.stdio;
 import std.range;
 import std.algorithm;
 
@@ -172,6 +171,10 @@ unittest {
 	write(buildPath(dir, "c.asm"), "#include defs.asm\n");
 	write(buildPath(dir, "main.asm"), "#include defs.asm\n#include c.asm\nm3\n");
 	assert(preprocess(buildPath(dir, "main.asm")).map!(l => l.text).array == ["d1", "d1", "m3"]);
+
+	// unknown directive
+	write(buildPath(dir, "a.asm"), "t1\n#inlcude defs.asm\n");
+	assert(collectExceptionMsg(preprocess(buildPath(dir, "a.asm"))).canFind("a.asm:2: unknown directive: #inlcude defs.asm"));
 }
 
 // -- Preprocessor --
@@ -209,8 +212,7 @@ private SourceLine[] preprocess(string filename, string includePath, string[] ch
 				if (directive.name.length > 0 && directive.name[0] == '!') {
 					// skip
 				} else {
-					// throw error: unrecognized directive 
-					writeln("Preprocessor directive: ", directive);
+					throw new Exception(format("%s:%d: unknown directive: %s", name, num, strip(text)));
 				}
 			}
 		} else if (skip) {
