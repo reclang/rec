@@ -4,7 +4,7 @@ import std.file : exists, isFile, readText;
 import std.path : absolutePath, buildNormalizedPath, baseName, dirName, isAbsolute;
 
 import std.string;
-import std.uni;
+import std.ascii : isWhite;
 import std.stdio;
 import std.range;
 import std.algorithm;
@@ -107,6 +107,7 @@ unittest {
 	assert(parseDirective("#if  arch( x86 )").params[0].values == ["x86"]);
 	assert(parseDirective("endif").params.length == 0);
 	assert(parseDirective("include \"a b\"").params[0].name == "a b");
+	assert(parseDirective("include константы.inc ねこバス.inc").params.map!(p => p.name).array == ["константы.inc", "ねこバス.inc"]);
 	assert(parseDirective("if os(linux").params[0].values == ["linux"]);
 }
 
