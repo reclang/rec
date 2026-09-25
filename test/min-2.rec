@@ -1,0 +1,4 @@
+#!/
+void main() {
+	#include "min-2-2.inc"
+}
