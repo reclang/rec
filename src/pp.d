@@ -209,11 +209,8 @@ private SourceLine[] preprocess(string filename, string includePath, string[] ch
 			switch (directive.name) {
 				case "include": include(lines, directive.params, path, includePath, format("%s:%d", name, num), chain); break;
 				default: 
-				if (directive.name.length > 0 && directive.name[0] == '!') {
-					// skip
-				} else {
+					if (directive.name.length == 0 || directive.name[0] == '!' || isWhite(directive.name[0]) ) break;
 					throw new Exception(format("%s:%d: unknown directive: %s", name, num, strip(text)));
-				}
 			}
 		} else if (skip) {
 			// do nothing
