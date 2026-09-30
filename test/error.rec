@@ -1,0 +1,3 @@
+void main() {
+	#error this is a test error
+}

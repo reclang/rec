@@ -279,5 +279,36 @@ else
     skipped "aarch64-macos min-1 runs" "$host cannot run aarch64-macos output"
 fi
 
+# #warning prints file:line: warning: on stderr and the build goes on;
+# test/warning.rec includes min-1, so the output must run like min-1
+# (emptied first, so a failed build cannot leave the old min-1 behind)
+: > "$bin"
+msg=$("$reclang" -o "$bin" "$root/test/warning.rec" 2>&1 > /dev/null)
+status=$?
+if [ "$status" -eq 0 ] && [ "$msg" = "warning.rec:1: warning: this is a test warning" ]; then
+    ok "#warning prints a warning and compiles"
+else
+    bad "#warning prints a warning and compiles" "exit status $status, stderr '$msg'"
+fi
+
+"$bin" > /dev/null 2>&1
+status=$?
+if [ "$status" -eq 42 ]; then
+    ok "#warning program exits 42"
+else
+    bad "#warning program exits 42" "exit status $status"
+fi
+
+# #error stops the build with file:line: error: on stderr,
+# without a stack trace and without writing the output
+: > "$bin"
+msg=$("$reclang" -o "$bin" "$root/test/error.rec" 2>&1 > /dev/null)
+status=$?
+if [ "$status" -eq 1 ] && [ "$msg" = "error.rec:2: error: this is a test error" ] && [ ! -s "$bin" ]; then
+    ok "#error stops the build"
+else
+    bad "#error stops the build" "exit status $status, stderr '$msg'"
+fi
+
 echo "$pass passed, $fail failed, $skip skipped"
 [ "$fail" -eq 0 ]
