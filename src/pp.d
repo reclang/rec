@@ -7,6 +7,7 @@ import std.string;
 import std.ascii : isWhite;
 import std.range;
 import std.algorithm;
+import std.stdio;
 
 struct SourceLine {
 	string filename;
@@ -19,6 +20,7 @@ struct SourceLine {
 struct Directive {
 	string name;
 	Param[] params;
+	string text;
 }
 
 struct Param {
@@ -37,6 +39,7 @@ Directive parseDirective(string text) {
 	Directive d;
 	d.name = text[start .. i];
 	string rest = text[i .. $];
+	d.text = rest;
 	// count first so params and all values take one allocation each
 	size_t np, nv;
 	scanParams!false(rest, null, null, np, nv);
@@ -207,6 +210,8 @@ private SourceLine[] preprocess(string filename, string includePath, string[] ch
 		if (hasDirective) {
 			Directive directive = parseDirective(source[text_start .. end]);
 			switch (directive.name) {
+				case "error":   throw new Exception(format("%s:%d: error: %s", name, num, directive.text));
+				case "warning": stderr.writefln("%s:%d: warning: %s", name, num, directive.text); break;
 				case "include": include(lines, directive.params, path, includePath, format("%s:%d", name, num), chain); break;
 				default: 
 					if (directive.name.length == 0 || directive.name[0] == '!' || isWhite(directive.name[0]) ) break;
