@@ -39,7 +39,7 @@ Directive parseDirective(string text) {
 	Directive d;
 	d.name = text[start .. i];
 	string rest = text[i .. $];
-	d.text = rest;
+	d.text = rest.strip;
 	// count first so params and all values take one allocation each
 	size_t np, nv;
 	scanParams!false(rest, null, null, np, nv);
