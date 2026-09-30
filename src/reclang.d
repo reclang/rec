@@ -43,13 +43,18 @@ int main(string[] args) {
 	}
 	writeln(arguments);
 	Node program = new Node(NodeKind.program, "Program");
-	foreach(filename; arguments.filenames) {
-		SourceLine[] lines = preprocess(filename, arguments.include);
-		foreach (l; lines) writefln("%s/%s:%d: %s", l.path, l.filename, l.num, l.text);
-		Token[] tokens = tokenize(lines);
-		foreach(t; tokens) writefln("%s/%s %d:%d: %s", t.path, t.filename, t.line, t.pos + 1, t.text);
-		parse(program, tokens);
-		program.printNode;
+	try {
+		foreach(filename; arguments.filenames) {
+			SourceLine[] lines = preprocess(filename, arguments.include);
+			foreach (l; lines) writefln("%s/%s:%d: %s", l.path, l.filename, l.num, l.text);
+			Token[] tokens = tokenize(lines);
+			foreach(t; tokens) writefln("%s/%s %d:%d: %s", t.path, t.filename, t.line, t.pos + 1, t.text);
+			parse(program, tokens);
+			program.printNode;
+		}
+	} catch (Exception e) {
+		stderr.writeln(e.msg);
+		return 1;
 	}
 	string asmcode = genCode(program, arguments.target);
 	writeln(asmcode);
