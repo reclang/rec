@@ -1,5 +1,33 @@
 # Changelog
 
+## [0.0.8] - 2026-10-01
+
+Cleaned up compiler output: `-d` prints the output of one or more compiler stages.
+The preprocessor supports `#include`, `#error`, and `#warning`.
+
+### Added
+
+- `-d STAGES` prints compiler stages:
+  - `args`
+  - `pp`
+  - `tokens`
+  - `ast`
+  - `asm`
+  - `asm-pp`
+  - `asm-tokens`
+- `#include` directive: a relative file name is looked up next to the
+  including file first, then in the `-i PATH` include path.
+- `#error` stops the build with `file:line: error: message` on stderr.
+- `#warning` prints `file:line: warning: message` on stderr, and the
+  build goes on.
+- Lines starting with `#!` or `# ` are ignored.
+
+### Changed
+
+- The compiler no longer prints every step it performs; use `-d` for that.
+- Unknown directives are errors.
+- Compile errors are printed without a stack trace.
+
 ## [0.0.7] - 2026-09-22
 
 Homebrew tap: `brew install reclang/rec/reclang` on macOS and Linux.
