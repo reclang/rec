@@ -14,9 +14,10 @@
 #                                       reads it
 #
 # Once the release exists, the tap job rewrites Formula/reclang.rb in
-# reclang/homebrew-rec from packaging/homebrew/reclang.rb and pushes it with
-# the HOMEBREW_TAP_DEPLOY_KEY secret, so `brew upgrade reclang` sees the
-# new version.
+# reclang/homebrew-rec from packaging/homebrew/reclang.rb and opens a pull
+# request with it. brew test-bot bottles the pull request, and once it
+# passes the tap's publish workflow uploads the bottles and pushes the
+# formula to main, so `brew upgrade reclang` sees the new version.
 #
 # The tag must be the version value fron the VERSION file with a v in front,
 # i.e., "1.0.0" in the VERSION file and "v1.0.0" tag;
@@ -304,8 +305,8 @@ jobs:
               -e "s|^  sha256 \"[0-9a-f]*\"|  sha256 \"$sha\"|" \
               rec/packaging/homebrew/reclang.rb > tap/Formula/reclang.rb
           grep -c "v$VERSION/reclang-$VERSION.tar.gz\|$sha" tap/Formula/reclang.rb | grep -qx 2
-      # brew test-bot bottles the pull request; running the tap's publish
-      # workflow with its number uploads the bottles and merges it
+      # brew test-bot bottles the pull request; once it passes, the tap's
+      # publish workflow uploads the bottles and pushes the formula to main
       - name: Pull request
         env:
           GH_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
