@@ -33,6 +33,27 @@ or
 .BR aarch64-macos .
 Defaults to the host.
 .TP
+.BI \-d " STAGES"
+Compiler stage(s) output.
+.I STAGES
+is a comma-separated list of:
+.B args
+(the parsed options),
+.B pp
+(the preprocessed source),
+.B tokens
+(the source tokens),
+.B ast
+(the syntax tree),
+.B asm
+(the generated assembly),
+.B asm\-pp
+(the preprocessed assembly) and
+.B asm\-tokens
+(the assembler tokens).
+.B \-d
+can be given more than once.
+.TP
 .B \-\-help
 Print a short usage summary and exit.
 .TP
