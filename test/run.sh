@@ -126,6 +126,36 @@ case $msg in
     *)              bad "reclang -t no-such-target lists x86_64-linux on stderr" "got '$msg'" ;;
 esac
 
+# reclang -d rejects an unknown stage without writing output,
+# and lists the supported ones on stderr
+: > "$bin"
+msg=$("$reclang" -o "$bin" -d no-such-stage "$root/test/min-1.rec" 2>&1 > /dev/null)
+status=$?
+if [ "$status" -ne 0 ] && [ ! -s "$bin" ]; then
+    ok "reclang -d no-such-stage fails"
+else
+    bad "reclang -d no-such-stage fails" "exit status $status"
+fi
+
+case $msg in
+    *asm-tokens*) ok "reclang -d no-such-stage lists asm-tokens on stderr" ;;
+    *)            bad "reclang -d no-such-stage lists asm-tokens on stderr" "got '$msg'" ;;
+esac
+
+# stages are printed only when -d asks for them
+out=$("$reclang" -o "$bin" "$root/test/min-1.rec" 2> /dev/null)
+if [ -z "$out" ]; then
+    ok "reclang prints nothing on stdout without -d"
+else
+    bad "reclang prints nothing on stdout without -d" "got '$(printf '%s\n' "$out" | head -n 1)'"
+fi
+
+out=$("$reclang" -d asm -o "$bin" "$root/test/min-1.rec" 2> /dev/null)
+case $out in
+    *_start:*) ok "reclang -d asm prints the assembly" ;;
+    *)         bad "reclang -d asm prints the assembly" "got '$(printf '%s\n' "$out" | head -n 1)'" ;;
+esac
+
 # test/min-1.rec compiles for the host and runs
 # (a noexec TMPDIR makes the run step fail with 126: use TMPDIR=$root)
 "$reclang" -o "$bin" "$root/test/min-1.rec" > /dev/null 2>&1
