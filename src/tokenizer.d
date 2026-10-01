@@ -14,8 +14,10 @@ CharKind[256] charKind = () {
 }();
 
 enum TokenKind {
-    identifier, type, keyword, constant, punctuator, text
+    identifier, type, keyword, constant, punctuator, text, directive
 }
+
+TokenKind[string] keywords = [ "void": TokenKind.type ];
 
 struct Token {
     string path;
@@ -27,13 +29,13 @@ struct Token {
 }
 
 TokenKind tokenKind(string s) {
-    switch(s) {
-        case "void": return TokenKind.type;
-        default: return charKind[s[0]] == CharKind.digit ? TokenKind.constant : TokenKind.identifier;
-    }
+    if (s[0] == '#') return TokenKind.directive;
+    if (charKind[s[0]] == CharKind.digit) return TokenKind.constant;
+    if (s in keywords) return keywords[s];
+    return TokenKind.identifier;
 }
 
-private void tokenizeLine(ref Token[] tokens, string path, string filename, uint line, string s) {
+void tokenizeLine(ref Token[] tokens, string path, string filename, uint line, string s) {
     uint i = 0;
     while(i < s.length) {
         final switch (charKind[s[i]]) {
