@@ -3,8 +3,8 @@ module args;
 import std.string;
 import std.path : absolutePath, buildNormalizedPath, baseName;
 import std.algorithm: map;
-import std.algorithm.searching: find;
-import std.array: join;
+import std.algorithm.searching: find, canFind;
+import std.array: join, split;
 
 // host arch and os values
 version (X86_64)       enum hostArch = "x86_64";
@@ -49,6 +49,9 @@ Target[] supportedTargets = [
     Target(Arch.aarch64, OS.macos),
 ];
 
+// compiler stages for -d output
+string[] dumpStages = ["args", "pp", "tokens", "ast", "asm", "asm-pp", "asm-tokens"];
+
 struct Arguments {
     string[] filenames;
     string name;
@@ -56,9 +59,12 @@ struct Arguments {
     Target target;
     string include;
     string path;
+    string[] dump;
     string error;
     bool showHelp;
     bool showVersion;
+
+    bool shouldDump(string stage) { return dump.canFind(stage); }
 }
 
 string normalizePath(string path) {
@@ -96,6 +102,7 @@ Arguments processArguments(string[] args) {
                     case "t": target = v; break;
                     case "i": arguments.include = v; break;
                     case "s": arguments.path = v; break;
+                    case "d": arguments.dump ~= v.split(","); break;
                     default:
                         arguments.error = "Unknown parameter: -" ~ k;
                         return arguments;
@@ -110,6 +117,13 @@ Arguments processArguments(string[] args) {
         return arguments;
     }
     arguments.target = targets[0];
+    // -d can be provided more than once, and -d stages can be comma-separated
+    foreach (stage; arguments.dump) {
+        if (!dumpStages.canFind(stage)) {
+            arguments.error = "Unknown dump stage: " ~ stage ~ "\nSupported values: " ~ join(dumpStages, ", ");
+            return arguments;
+        }
+    }
     // paths
     string currentPath = ".".normalizePath;
     arguments.path = arguments.path.length == 0 ? currentPath : arguments.path.normalizePath;

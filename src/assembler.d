@@ -80,7 +80,7 @@ ubyte[] encode(Instruction instruction, Label[string] labels, Arch arch) {
 	}
 }
 
-ubyte[] assemble(SourceLine[] lines, string filename, Target target) {
+ubyte[] assemble(SourceLine[] lines, string filename, Target target, bool dumpTokens) {
 	uint offset;
 	string entryLabel = "_start";
 	Label[string] labels;
@@ -113,7 +113,7 @@ ubyte[] assemble(SourceLine[] lines, string filename, Target target) {
 				offset += instruction.size;
 				instructions ~= instruction;
 		}
-		writeln(tokens);
+		if (dumpTokens) writeln(tokens);
 	}
 	// second pass: encode with all labels known
 	ubyte[] bytes;

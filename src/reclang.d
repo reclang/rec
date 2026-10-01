@@ -23,6 +23,8 @@ void showHelp() {
     -s PATH         path for source files
     -i PATH         path for include files
     -t ARCH-OS      target, defaults to the host
+    -d STAGES       print compiler stages, comma separated:
+                    args, pp, tokens, ast, asm, asm-pp, asm-tokens
 	}.strip;
 	writeln(help);
 }
@@ -41,32 +43,32 @@ int main(string[] args) {
 		showHelp();
 		return 0;
 	}
-	writeln(arguments);
+	if (arguments.shouldDump("args")) writeln(arguments);
 	Node program = new Node(NodeKind.program, "Program");
 	try {
 		foreach(filename; arguments.filenames) {
 			SourceLine[] lines = preprocess(filename, arguments.include);
-			foreach (l; lines) writefln("%s/%s:%d: %s", l.path, l.filename, l.num, l.text);
+			if (arguments.shouldDump("pp")) foreach (l; lines) writefln("%s/%s:%d: %s", l.path, l.filename, l.num, l.text);
 			Token[] tokens = tokenize(lines);
-			foreach(t; tokens) writefln("%s/%s %d:%d: %s", t.path, t.filename, t.line, t.pos + 1, t.text);
+			if (arguments.shouldDump("tokens")) foreach(t; tokens) writefln("%s/%s %d:%d: %s", t.path, t.filename, t.line, t.pos + 1, t.text);
 			parse(program, tokens);
-			program.printNode;
+			if (arguments.shouldDump("ast")) program.printNode;
 		}
 	} catch (Exception e) {
 		stderr.writeln(e.msg);
 		return 1;
 	}
 	string asmcode = genCode(program, arguments.target);
-	writeln(asmcode);
+	if (arguments.shouldDump("asm")) writeln(asmcode);
 
 	//string outputPath = arguments.outputFile.length > 0 ? arguments.outputFile : "./out.asm";
 	//File outputFile = File(outputPath, "w");
 	//outputFile.write(asmcode);
 
 	SourceLine[] fullcode = preprocess(asmcode.splitLines);
-	foreach (l; fullcode) writefln("%s/%s:%d: %s", l.path, l.filename, l.num, l.text);
+	if (arguments.shouldDump("asm-pp")) foreach (l; fullcode) writefln("%s/%s:%d: %s", l.path, l.filename, l.num, l.text);
 	try {
-		assemble(fullcode, arguments.outputFile, arguments.target);
+		assemble(fullcode, arguments.outputFile, arguments.target, arguments.shouldDump("asm-tokens"));
 	} catch (Exception e) {
 		stderr.writeln(e.msg);
 		return 1;
